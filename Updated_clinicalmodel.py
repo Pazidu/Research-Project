@@ -53,7 +53,11 @@ print("✅ K-Fold dataset created successfully")
 def create_proposed_model():
     inputs = layers.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
     
-    base = EfficientNetB3(include_top=False, weights="imagenet", input_tensor=inputs)
+    base = EfficientNetB3(
+        include_top=False, 
+        weights="imagenet", 
+        input_tensor=inputs
+    )
     
     # Freeze all layers first
     base.trainable = False
@@ -151,4 +155,4 @@ for fold in range(1, FOLDS + 1):
     print(f"Fold {fold} Accuracy: {acc:.4f}, AUC: {auc:.4f}")
 
 print(f"\nAverage Accuracy over {FOLDS} folds: {np.mean(accuracies):.4f}")
-# Average Accuracy over 5 folds: 0.8294
+# Average Accuracy over 5 folds: 0.6211

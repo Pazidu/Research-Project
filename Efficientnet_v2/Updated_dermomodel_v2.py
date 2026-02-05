@@ -5,6 +5,7 @@ import os
 import shutil
 import pandas as pd
 import tensorflow as tf
+
 from tensorflow.keras import layers
 from tensorflow.keras.applications import EfficientNetV2S
 from tensorflow.keras.callbacks import ModelCheckpoint
@@ -76,7 +77,12 @@ def prepare_datasets(train_path, valid_path, test_path, batch_size, image_size):
 
 def create_model(image_size):
     inputs = layers.Input(shape=(image_size, image_size, 3))
-    base = EfficientNetV2S(include_top=False, weights='imagenet', input_tensor=inputs)
+    base = EfficientNetV2S(
+        include_top=False,  
+        input_tensor=inputs,
+        weights='imagenet',
+    )
+
     base.trainable = False
 
     # Unfreeze last 50 layers (tune as needed)
@@ -91,6 +97,7 @@ def create_model(image_size):
     outputs = layers.Dense(2, activation='softmax', dtype='float32')(x)  # float32 for output layer to avoid mixed precision issues
 
     model = tf.keras.Model(inputs, outputs)
+
     model.compile(
         optimizer=tf.keras.optimizers.Adam(1e-4),
         loss='categorical_crossentropy',
@@ -99,7 +106,7 @@ def create_model(image_size):
     return model
 
 batch_size = 16
-image_size = 160
+image_size = 256
 TOTAL_EPOCHS = 25
 
 train_path = f"{BASE}/train"

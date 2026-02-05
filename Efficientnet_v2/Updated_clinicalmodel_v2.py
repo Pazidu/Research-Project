@@ -154,4 +154,4 @@ for fold in range(1, FOLDS + 1):
     print(f"Fold {fold} Accuracy: {acc:.4f}, AUC: {auc:.4f}")
 
 print(f"\nAverage Accuracy over {FOLDS} folds: {np.mean(accuracies):.4f}")
-# Average Accuracy over 5 folds: 0.8294
+# Average Accuracy over 5 folds: 0.8647
