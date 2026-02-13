@@ -163,3 +163,4 @@ print(f"\nAverage Accuracy over {FOLDS} folds: {np.mean(accuracies):.4f}")
 #Average Accuracy over 5 folds (input size = 188, unfreeze last 20 layers,LEARNING_RATE = 1e-4  ): 0.8647
 #Average Accuracy over 5 folds (input size = 224, unfreeze last 80 layers,LEARNING_RATE = 1e-4  ): 0.8353
 #Average Accuracy over 5 folds (input size = 224, unfreeze last 20 layers,LEARNING_RATE = 5e-5  ): 0.8235
+#Average Accuracy over 5 folds (input size = 188, unfreeze last 80 layers,LEARNING_RATE = 5e-5  ): 
