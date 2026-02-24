@@ -27,26 +27,26 @@ df = pd.read_csv(CSV_PATH)
 df["label"] = df["dx"].apply(lambda x: "melanoma" if x == "mel" else "non_melanoma")
 
 # Train/Val/Test split
-train_df, temp_df = train_test_split(df, test_size=0.2, stratify=df["label"], random_state=42)
-valid_df, test_df = train_test_split(temp_df, test_size=0.5, stratify=temp_df["label"], random_state=42)
+# train_df, temp_df = train_test_split(df, test_size=0.2, stratify=df["label"], random_state=42)
+# valid_df, test_df = train_test_split(temp_df, test_size=0.5, stratify=temp_df["label"], random_state=42)
 
-for split in ["train", "valid", "test"]:
-    for cls in ["melanoma", "non_melanoma"]:
-        os.makedirs(f"{BASE}/{split}/{cls}", exist_ok=True)
+# for split in ["train", "valid", "test"]:
+#     for cls in ["melanoma", "non_melanoma"]:
+#         os.makedirs(f"{BASE}/{split}/{cls}", exist_ok=True)
 
-def copy_images(df, split):
-    for _, row in df.iterrows():
-        img = row["image_id"] + ".jpg"
-        src = os.path.join(IMG_SRC, img)
-        dst = os.path.join(BASE, split, row["label"], img)
-        if os.path.exists(src):
-            shutil.copy(src, dst)
+# def copy_images(df, split):
+#     for _, row in df.iterrows():
+#         img = row["image_id"] + ".jpg"
+#         src = os.path.join(IMG_SRC, img)
+#         dst = os.path.join(BASE, split, row["label"], img)
+#         if os.path.exists(src):
+#             shutil.copy(src, dst)
 
-copy_images(train_df, "train")
-copy_images(valid_df, "valid")
-copy_images(test_df, "test")
+# copy_images(train_df, "train")
+# copy_images(valid_df, "valid")
+# copy_images(test_df, "test")
 
-print("Images copied to local SSD")
+# print("Images copied to local SSD")
 
 def prepare_datasets(train_path, valid_path, test_path, batch_size, image_size):
     train_ds = tf.keras.preprocessing.image_dataset_from_directory(
