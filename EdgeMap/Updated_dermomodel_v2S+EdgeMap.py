@@ -127,4 +127,3 @@ print(f"Final Test Accuracy: {acc:.4f}")
 
 # Save model
 model.save(MODEL_SAVE_PATH)
-# Final Test Accuracy: 0.9072
