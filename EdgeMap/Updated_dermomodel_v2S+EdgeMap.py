@@ -8,35 +8,31 @@ from tensorflow.keras import layers
 from tensorflow.keras.applications import EfficientNetV2S
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras import mixed_precision
-
-# Mixed precision
-policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_global_policy(policy)
+from tensorflow.keras.applications.efficientnet_v2 import preprocess_input
 
 print("TensorFlow version:", tf.__version__)
 print("GPU:", tf.test.gpu_device_name())
 
-# --------------------------
+
 # Paths
-# --------------------------
 BASE = "/content/newdata"
 IMG_SRC = "/drive/MyDrive/Colab Notebooks/newdata"
 CHECKPOINT_DIR = "/drive/MyDrive/checkpoints"
 MODEL_SAVE_PATH = "/drive/MyDrive/Colab Notebooks/Models/dermoscopy/efficientnetv2s_dual_branch.keras"
 
-# Clean Colab SSD
+# Clean Colab SSD and copy dataset
 if os.path.exists(BASE):
     shutil.rmtree(BASE)
 shutil.copytree(IMG_SRC, BASE)
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
-# --------------------------
+# Mixed precision
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_global_policy(policy)
+
 # Dataset + Edge Map
-# --------------------------
 batch_size = 16
 image_size = 256
-
-from tensorflow.keras.applications.efficientnet_v2 import preprocess_input
 
 def add_edge_map(image, label, image_size):
     # Preprocess for EfficientNetV2S
@@ -68,10 +64,10 @@ train_ds = prepare_dataset(f"{BASE}/train", batch_size, image_size, True)
 val_ds   = prepare_dataset(f"{BASE}/valid", batch_size, image_size, False)
 test_ds  = prepare_dataset(f"{BASE}/test", batch_size, image_size, False)
 
-# --------------------------
+
 # Dual-branch Model
-# --------------------------
 def create_dual_model(image_size):
+
     # RGB branch
     rgb_input = layers.Input(shape=(image_size, image_size, 3), name="rgb_input")
     base = EfficientNetV2S(include_top=False, weights='imagenet', input_tensor=rgb_input)
@@ -104,9 +100,7 @@ def create_dual_model(image_size):
 
 model = create_dual_model(image_size)
 
-# --------------------------
 # Training
-# --------------------------
 checkpoint_best = ModelCheckpoint(
     filepath=f"{CHECKPOINT_DIR}/best_dual.keras",
     monitor="val_accuracy",

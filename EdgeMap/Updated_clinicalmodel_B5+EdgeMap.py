@@ -14,23 +14,20 @@ from tensorflow.keras.applications.efficientnet import preprocess_input
 
 print("TensorFlow version:", tf.__version__)
 
-# ------------------------------
 # Parameters
-# ------------------------------
 IMG_SIZE = 188
 BATCH_SIZE = 16
 EPOCHS = 100
 LEARNING_RATE = 1e-4
 R_RATIO = 24
 
+# Paths
 SOURCE_DIR = "/content/drive/MyDrive/UMCG"
 TARGET_DIR = "/content/drive/MyDrive/Colab Notebooks/kfolddata"
 CLASSES = ["melanoma", "non_melanoma"]
 FOLDS = 5
 
-# ------------------------------
 # K-Fold Dataset Preparation
-# ------------------------------
 images = []
 labels = []
 
@@ -56,9 +53,7 @@ for fold, (train_idx, test_idx) in enumerate(skf.split(images, labels), 1):
 
 print("✅ K-Fold dataset created successfully")
 
-# ------------------------------
 # Edge Map Function
-# ------------------------------
 def add_edge_map(image):
     image = tf.cast(image, tf.float32)
     image = preprocess_input(image)
@@ -72,9 +67,7 @@ def add_edge_map(image):
     edge = edge / (tf.reduce_max(edge) + 1e-6)
     return image, edge
 
-# ------------------------------
 # Dual-Branch Model
-# ------------------------------
 def create_dual_model(img_size):
     rgb_input = layers.Input(shape=(img_size, img_size, 3), name="rgb_input")
     base = EfficientNetB3(include_top=False, weights="imagenet", input_tensor=rgb_input)
@@ -105,9 +98,8 @@ def create_dual_model(img_size):
     )
     return model
 
-# ------------------------------
+
 # Custom Generator
-# ------------------------------
 class DualImageDataGenerator(tf.keras.utils.Sequence):
     def __init__(self, generator, batch_size):
         self.generator = generator
@@ -127,9 +119,8 @@ class DualImageDataGenerator(tf.keras.utils.Sequence):
             x_edge[i, :, :, 0] = edge[:, :, 0]
         return (x_rgb, x_edge), y_batch
 
-# ------------------------------
+
 # Training K-Fold
-# ------------------------------
 accuracies = []
 BASE_PATH = TARGET_DIR
 SAVE_PATH = "/content/drive/MyDrive/Models/clinical_dual"
