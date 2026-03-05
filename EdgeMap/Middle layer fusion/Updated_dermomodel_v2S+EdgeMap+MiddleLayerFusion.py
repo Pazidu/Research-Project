@@ -13,44 +13,47 @@ from tensorflow.keras.applications.efficientnet_v2 import preprocess_input
 print("TensorFlow version:", tf.__version__)
 print("GPU:", tf.test.gpu_device_name())
 
-# ===============================
 # Paths
-# ===============================
 BASE = "/content/newdata"
 IMG_SRC = "/drive/MyDrive/Colab Notebooks/newdata"
 CHECKPOINT_DIR = "/drive/MyDrive/checkpoints"
-MODEL_SAVE_PATH = "/drive/MyDrive/Colab Notebooks/Models/dermoscopy/efficientnetv2s_mid_fusion.keras"
+MODEL_SAVE_PATH = "/drive/MyDrive/Colab Notebooks/Models/dermoscopy/efficientnetv2s_dual_branch.keras"
 
-# Clean Colab SSD and copy dataset
+# Copy dataset to Colab SSD
 if os.path.exists(BASE):
     shutil.rmtree(BASE)
+
 shutil.copytree(IMG_SRC, BASE)
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
-# ===============================
 # Mixed precision
-# ===============================
 policy = mixed_precision.Policy('mixed_float16')
 mixed_precision.set_global_policy(policy)
 
-# ===============================
-# Dataset + Edge Map
-# ===============================
+# Parameters
 batch_size = 16
 image_size = 256
 
+# IMPORTANT: Choose fusion layer here
+FUSION_LAYER = "block5e_add"
+
+# Dataset + Edge Map
 def add_edge_map(image, label):
+
     image = tf.cast(image, tf.float32)
     image = preprocess_input(image)
 
     gray = tf.image.rgb_to_grayscale(image)
     sobel = tf.image.sobel_edges(gray)
+
     edge = tf.sqrt(tf.reduce_sum(tf.square(sobel), axis=-1))
     edge = edge / (tf.reduce_max(edge) + 1e-6)
 
     return (image, edge), label
 
+
 def prepare_dataset(path, shuffle):
+
     ds = tf.keras.preprocessing.image_dataset_from_directory(
         path,
         image_size=(image_size, image_size),
@@ -61,92 +64,85 @@ def prepare_dataset(path, shuffle):
 
     ds = ds.map(add_edge_map, num_parallel_calls=tf.data.AUTOTUNE)
     ds = ds.prefetch(tf.data.AUTOTUNE)
+
     return ds
+
 
 train_ds = prepare_dataset(f"{BASE}/train", True)
 val_ds   = prepare_dataset(f"{BASE}/valid", False)
 test_ds  = prepare_dataset(f"{BASE}/test", False)
 
-# ===============================
-# Mid-Level Fusion Model
-# ===============================
-def create_mid_fusion_model(image_size, fusion_layer_name="block4a_activation"):
 
-    # RGB Input
+# Dual Branch Model
+def create_dual_model():
+
+    # RGB branch
     rgb_input = layers.Input(shape=(image_size, image_size, 3), name="rgb_input")
 
-    base_model = EfficientNetV2S(
+    base = EfficientNetV2S(
         include_top=False,
-        weights="imagenet",
+        weights='imagenet',
         input_tensor=rgb_input
     )
 
-    # Freeze early layers
-    for layer in base_model.layers[:-50]:
+    for layer in base.layers:
+        print(layer.name)
+
+    base.trainable = True
+
+    for layer in base.layers[:-50]:
         layer.trainable = False
 
-    # Get middle feature map
-    fusion_feature = base_model.get_layer(fusion_layer_name).output
+    # Select middle fusion layer
+    middle_output = base.get_layer(FUSION_LAYER).output
+    rgb_features = layers.GlobalAveragePooling2D()(middle_output)
 
-    # Edge Input
+    # Edge branch
     edge_input = layers.Input(shape=(image_size, image_size, 1), name="edge_input")
 
     x = layers.Conv2D(32, 3, activation='relu', padding='same')(edge_input)
     x = layers.MaxPooling2D(2)(x)
+
     x = layers.Conv2D(64, 3, activation='relu', padding='same')(x)
     x = layers.MaxPooling2D(2)(x)
 
-    # Resize edge feature to match EfficientNet feature size
-    target_h = fusion_feature.shape[1]
-    target_w = fusion_feature.shape[2]
-    x = layers.Resizing(target_h, target_w)(x)
+    x = layers.Conv2D(128, 3, activation='relu', padding='same')(x)
 
-    # Match channels
-    x = layers.Conv2D(fusion_feature.shape[-1], 1, activation='relu')(x)
+    x = layers.GlobalAveragePooling2D()(x)
 
-    # Mid-level Fusion
-    fused = layers.Concatenate()([fusion_feature, x])
+    # Feature fusion
+    fused = layers.Concatenate()([rgb_features, x])
 
-    # Reduce channels back
-    fused = layers.Conv2D(fusion_feature.shape[-1], 1, activation='relu')(fused)
+    fused = layers.BatchNormalization()(fused)
+    fused = layers.Dropout(0.5)(fused)
 
-    # Continue remaining EfficientNet layers
-    remaining = fused
-    fusion_index = base_model.layers.index(base_model.get_layer(fusion_layer_name))
+    outputs = layers.Dense(
+        2,
+        activation='softmax',
+        dtype='float32'
+    )(fused)
 
-    for layer in base_model.layers[fusion_index + 1:]:
-        remaining = layer(remaining)
-
-    # Classification head
-    gap = layers.GlobalAveragePooling2D()(remaining)
-    gap = layers.BatchNormalization()(gap)
-    gap = layers.Dropout(0.5)(gap)
-
-    outputs = layers.Dense(2, activation='softmax', dtype='float32')(gap)
-
-    model = tf.keras.Model(inputs=[rgb_input, edge_input], outputs=outputs)
+    model = tf.keras.Model(
+        inputs=[rgb_input, edge_input],
+        outputs=outputs
+    )
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(1e-4),
         loss='categorical_crossentropy',
-        metrics=['accuracy', tf.keras.metrics.AUC(name="auc")]
+        metrics=['accuracy']
     )
 
     return model
 
 
-# ===============================
-# Create Model
-# ===============================
-model = create_mid_fusion_model(image_size, "block4a_activation")
+model = create_dual_model()
 
 model.summary()
 
-# ===============================
 # Training
-# ===============================
 checkpoint_best = ModelCheckpoint(
-    filepath=f"{CHECKPOINT_DIR}/best_mid_fusion.keras",
+    filepath=f"{CHECKPOINT_DIR}/best_dual_{FUSION_LAYER}.keras",
     monitor="val_accuracy",
     save_best_only=True,
     verbose=1
@@ -159,14 +155,11 @@ history = model.fit(
     callbacks=[checkpoint_best]
 )
 
-# ===============================
-# Evaluation
-# ===============================
-loss, acc, auc = model.evaluate(test_ds)
-print(f"Final Test Accuracy: {acc:.4f}")
-print(f"Final Test AUC: {auc:.4f}")
+# Evaluate
+loss, acc = model.evaluate(test_ds)
 
-# ===============================
-# Save Model
-# ===============================
+print("Fusion Layer:", FUSION_LAYER)
+print(f"Final Test Accuracy: {acc:.4f}")
+
+# Save model
 model.save(MODEL_SAVE_PATH)
