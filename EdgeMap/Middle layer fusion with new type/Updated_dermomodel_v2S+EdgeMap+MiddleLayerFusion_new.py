@@ -26,16 +26,18 @@ if os.path.exists(BASE):
 shutil.copytree(IMG_SRC, BASE)
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
-# Mixed precision
-policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_global_policy(policy)
+import tensorflow as tf
+from tensorflow.keras import mixed_precision
+
+mixed_precision.set_global_policy("float32")
 
 # Parameters
 batch_size = 16
 image_size = 256
 
-# IMPORTANT: Choose fusion layer here
-FUSION_LAYER = "block4c_add"
+# Fusion layer (tune this)
+FUSION_LAYER = "block5e_add"
+
 
 # Dataset + Edge Map
 def add_edge_map(image, label):
@@ -76,51 +78,50 @@ test_ds  = prepare_dataset(f"{BASE}/test", False)
 # Dual Branch Model
 def create_dual_model():
 
-    # RGB branch
     rgb_input = layers.Input(shape=(image_size, image_size, 3), name="rgb_input")
 
-    base = EfficientNetV2S(
+    base_model = EfficientNetV2S(
         include_top=False,
-        weights='imagenet',
-        input_tensor=rgb_input
+        weights="imagenet",
+        input_shape=(image_size, image_size, 3)
     )
 
-    for layer in base.layers:
-        print(layer.name)
-
-    base.trainable = True
-
-    for layer in base.layers[:-50]:
+    # Freeze early layers
+    for layer in base_model.layers[:-50]:
         layer.trainable = False
 
-    # Select middle fusion layer
-    middle_output = base.get_layer(FUSION_LAYER).output
-    rgb_features = layers.GlobalAveragePooling2D()(middle_output)
+    fusion_layer = base_model.get_layer(FUSION_LAYER)
+
+    feature_extractor = tf.keras.Model(
+        inputs=base_model.input,
+        outputs=fusion_layer.output
+    )
+
+    middle_feature = feature_extractor(rgb_input)
 
     # Edge branch
     edge_input = layers.Input(shape=(image_size, image_size, 1), name="edge_input")
 
-    x = layers.Conv2D(32, 3, activation='relu', padding='same')(edge_input)
+    x = layers.Conv2D(32, 3, activation="relu", padding="same")(edge_input)
     x = layers.MaxPooling2D(2)(x)
 
-    x = layers.Conv2D(64, 3, activation='relu', padding='same')(x)
+    x = layers.Conv2D(64, 3, activation="relu", padding="same")(x)
     x = layers.MaxPooling2D(2)(x)
 
-    x = layers.Conv2D(128, 3, activation='relu', padding='same')(x)
+    x = layers.Conv2D(128, 3, activation="relu", padding="same")(x)
 
-    x = layers.GlobalAveragePooling2D()(x)
+    # Resize to match EfficientNet feature map
+    x = layers.Resizing(middle_feature.shape[1],middle_feature.shape[2])(x)
+    x = layers.Conv2D(middle_feature.shape[-1], 1, padding="same")(x)
 
     # Feature fusion
-    fused = layers.Concatenate()([rgb_features, x])
-
+    fused = layers.Concatenate()([middle_feature, x])
+    fused = layers.Conv2D(256,3,activation="relu",padding="same")(fused)
     fused = layers.BatchNormalization()(fused)
+    fused = layers.GlobalAveragePooling2D()(fused)
+    fused = layers.Dense(256, activation="relu")(fused)
     fused = layers.Dropout(0.5)(fused)
-
-    outputs = layers.Dense(
-        2,
-        activation='softmax',
-        dtype='float32'
-    )(fused)
+    outputs = layers.Dense(2,activation="softmax")(fused)
 
     model = tf.keras.Model(
         inputs=[rgb_input, edge_input],
@@ -129,16 +130,15 @@ def create_dual_model():
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(1e-4),
-        loss='categorical_crossentropy',
-        metrics=['accuracy']
+        loss="categorical_crossentropy",
+        metrics=["accuracy"]
     )
 
     return model
 
-
 model = create_dual_model()
-
 model.summary()
+
 
 # Training
 checkpoint_best = ModelCheckpoint(
@@ -155,11 +155,13 @@ history = model.fit(
     callbacks=[checkpoint_best]
 )
 
+
 # Evaluate
 loss, acc = model.evaluate(test_ds)
 
 print("Fusion Layer:", FUSION_LAYER)
 print(f"Final Test Accuracy: {acc:.4f}")
+
 
 # Save model
 model.save(MODEL_SAVE_PATH)

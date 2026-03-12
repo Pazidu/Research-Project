@@ -17,7 +17,7 @@ print("GPU:", tf.test.gpu_device_name())
 BASE = "/content/newdata"
 IMG_SRC = "/drive/MyDrive/Colab Notebooks/newdata"
 CHECKPOINT_DIR = "/drive/MyDrive/checkpoints"
-MODEL_SAVE_PATH = "/drive/MyDrive/Colab Notebooks/Models/dermoscopy/efficientnetv2s_dual_branch.keras"
+MODEL_SAVE_PATH = "/drive/MyDrive/Colab Notebooks/Models/dermoscopy/efficientnetv2s_middle_fusion.keras"
 
 # Copy dataset to Colab SSD
 if os.path.exists(BASE):
@@ -33,9 +33,6 @@ mixed_precision.set_global_policy(policy)
 # Parameters
 batch_size = 16
 image_size = 256
-
-# IMPORTANT: Choose fusion layer here
-FUSION_LAYER = "block4c_add"
 
 # Dataset + Edge Map
 def add_edge_map(image, label):
@@ -73,10 +70,10 @@ val_ds   = prepare_dataset(f"{BASE}/valid", False)
 test_ds  = prepare_dataset(f"{BASE}/test", False)
 
 
-# Dual Branch Model
+# Model
 def create_dual_model():
 
-    # RGB branch
+    # RGB input
     rgb_input = layers.Input(shape=(image_size, image_size, 3), name="rgb_input")
 
     base = EfficientNetV2S(
@@ -85,35 +82,47 @@ def create_dual_model():
         input_tensor=rgb_input
     )
 
-    for layer in base.layers:
-        print(layer.name)
-
     base.trainable = True
 
     for layer in base.layers[:-50]:
         layer.trainable = False
 
-    # Select middle fusion layer
-    middle_output = base.get_layer(FUSION_LAYER).output
-    rgb_features = layers.GlobalAveragePooling2D()(middle_output)
+    # Middle feature map
+    middle_layer = base.get_layer("block4c_add").output
 
     # Edge branch
     edge_input = layers.Input(shape=(image_size, image_size, 1), name="edge_input")
 
-    x = layers.Conv2D(32, 3, activation='relu', padding='same')(edge_input)
+    x = layers.Conv2D(32,3,activation='relu',padding='same')(edge_input)
     x = layers.MaxPooling2D(2)(x)
 
-    x = layers.Conv2D(64, 3, activation='relu', padding='same')(x)
+    x = layers.Conv2D(64,3,activation='relu',padding='same')(x)
     x = layers.MaxPooling2D(2)(x)
 
-    x = layers.Conv2D(128, 3, activation='relu', padding='same')(x)
+    x = layers.Conv2D(128,3,activation='relu',padding='same')(x)
+    x = layers.MaxPooling2D(2)(x)
 
-    x = layers.GlobalAveragePooling2D()(x)
+    x = layers.Conv2D(256,3,activation='relu',padding='same')(x)
 
-    # Feature fusion
-    fused = layers.Concatenate()([rgb_features, x])
+    # Resize edge features to match RGB feature map size
+    target_size = middle_layer.shape[1:3]
 
+    x = layers.Resizing(target_size[0], target_size[1])(x)
+
+    # Fusion (Feature Map Fusion)
+    fused = layers.Concatenate()([middle_layer, x])
+
+    # Continue CNN processing after fusion
+    fused = layers.Conv2D(256,3,activation='relu',padding='same')(fused)
     fused = layers.BatchNormalization()(fused)
+    fused = layers.MaxPooling2D(2)(fused)
+
+    fused = layers.Conv2D(512,3,activation='relu',padding='same')(fused)
+    fused = layers.BatchNormalization()(fused)
+
+    # Global feature
+    fused = layers.GlobalAveragePooling2D()(fused)
+
     fused = layers.Dropout(0.5)(fused)
 
     outputs = layers.Dense(
@@ -142,7 +151,7 @@ model.summary()
 
 # Training
 checkpoint_best = ModelCheckpoint(
-    filepath=f"{CHECKPOINT_DIR}/best_dual_{FUSION_LAYER}.keras",
+    filepath=f"{CHECKPOINT_DIR}/best_middle_fusion.keras",
     monitor="val_accuracy",
     save_best_only=True,
     verbose=1
@@ -158,7 +167,6 @@ history = model.fit(
 # Evaluate
 loss, acc = model.evaluate(test_ds)
 
-print("Fusion Layer:", FUSION_LAYER)
 print(f"Final Test Accuracy: {acc:.4f}")
 
 # Save model
