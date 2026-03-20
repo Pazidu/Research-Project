@@ -106,8 +106,8 @@ def create_middle_fusion_model():
     x = layers.Conv2D(128,3,padding='same',activation='relu')(x)
     x = layers.MaxPooling2D(2)(x)
 
-    x = layers.Conv2D(256,3,padding='same',activation='relu')(x)
-    x = layers.MaxPooling2D(2)(x)
+    # x = layers.Conv2D(256,3,padding='same',activation='relu')(x)
+    # x = layers.MaxPooling2D(2)(x)
 
     # resize edge map to match EfficientNet feature map
     x = layers.Resizing(
