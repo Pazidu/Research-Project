@@ -103,8 +103,8 @@ def create_middle_fusion_model():
     x = layers.Conv2D(64,3,padding='same',activation='relu')(x)
     x = layers.MaxPooling2D(2)(x)
 
-    x = layers.Conv2D(128,3,padding='same',activation='relu')(x)
-    x = layers.MaxPooling2D(2)(x)
+    # x = layers.Conv2D(128,3,padding='same',activation='relu')(x)
+    # x = layers.MaxPooling2D(2)(x)
 
     # x = layers.Conv2D(256,3,padding='same',activation='relu')(x)
     # x = layers.MaxPooling2D(2)(x)
@@ -119,15 +119,20 @@ def create_middle_fusion_model():
     # ---------------------------
     # Middle Fusion
     # ---------------------------
-
     fused = layers.Concatenate()([rgb_feature_map, x])
 
-
     # Continue CNN after fusion
-    fused = layers.Conv2D(256,3,padding='same',activation='relu')(fused)
+    fused = layers.Conv2D(256, 3, padding='same', activation='relu')(fused)
     fused = layers.BatchNormalization()(fused)
 
-    fused = layers.Conv2D(256,3,padding='same',activation='relu')(fused)
+    fused = layers.Conv2D(256, 3, padding='same', activation='relu')(fused)
+    fused = layers.BatchNormalization()(fused)
+
+    # Extra conv layer after fusion
+    fused = layers.Conv2D(256, 3, padding='same', activation='relu')(fused)
+    fused = layers.BatchNormalization()(fused)
+    fused = layers.Dropout(0.3)(fused)  # Added dropout
+
     fused = layers.MaxPooling2D(2)(fused)
 
 
