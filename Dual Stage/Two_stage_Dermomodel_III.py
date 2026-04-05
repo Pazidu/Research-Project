@@ -7,7 +7,7 @@ import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras.applications import EfficientNetV2S
 from tensorflow.keras.applications.efficientnet_v2 import preprocess_input
-from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 
 print("TensorFlow:", tf.__version__)
 print("GPU:", tf.test.gpu_device_name())
@@ -34,36 +34,74 @@ os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 # PARAMETERS
 # -------------------------------
 batch_size = 16
-image_size = 256
+image_size = 300
 FUSION_LAYER = "block4c_add"
 
 
 # -------------------------------
-# DATASET
+# DATA AUGMENTATION
 # -------------------------------
-def add_edge_map(image, label):
+data_augmentation = tf.keras.Sequential([
+    layers.RandomFlip("horizontal"),
+    layers.RandomRotation(0.15),
+    layers.RandomZoom(0.15),
+    layers.RandomContrast(0.1),
+])
+
+
+# -------------------------------
+# FOCAL LOSS
+# -------------------------------
+def focal_loss(gamma=2., alpha=0.25):
+    def loss(y_true, y_pred):
+        y_pred = tf.clip_by_value(y_pred, 1e-7, 1 - 1e-7)
+        ce = -y_true * tf.math.log(y_pred)
+        weight = alpha * tf.pow(1 - y_pred, gamma)
+        return tf.reduce_mean(tf.reduce_sum(weight * ce, axis=1))
+    return loss
+
+
+# -------------------------------
+# DATASET (FIXED)
+# -------------------------------
+def add_edge_map(image, label, training=False):
     image = tf.cast(image, tf.float32)
+
+    # ✅ augmentation only for training
+    if training:
+        image = data_augmentation(image)
+
     image = preprocess_input(image)
 
     gray = tf.image.rgb_to_grayscale(image)
-    sobel = tf.image.sobel_edges(gray)
 
-    edge = tf.sqrt(tf.reduce_sum(tf.square(sobel), axis=-1))
+    # 🔥 multi-scale edge extraction
+    e1 = tf.image.sobel_edges(gray)
+    e2 = tf.image.sobel_edges(tf.image.resize(gray, [128,128]))
+
+    e1 = tf.sqrt(tf.reduce_sum(tf.square(e1), axis=-1))
+    e2 = tf.sqrt(tf.reduce_sum(tf.square(e2), axis=-1))
+
+    e2 = tf.image.resize(e2, [image_size, image_size])
+
+    edge = tf.concat([e1, e2], axis=-1)
     edge = edge / (tf.reduce_max(edge) + 1e-6)
 
     return (image, edge), label
 
 
-def prepare_dataset(path, shuffle):
+def prepare_dataset(path, training):
     ds = tf.keras.preprocessing.image_dataset_from_directory(
         path,
         image_size=(image_size, image_size),
         batch_size=batch_size,
         label_mode='categorical',
-        shuffle=shuffle
+        shuffle=training
     )
 
-    ds = ds.map(add_edge_map, num_parallel_calls=tf.data.AUTOTUNE)
+    ds = ds.map(lambda x,y: add_edge_map(x,y,training),
+                num_parallel_calls=tf.data.AUTOTUNE)
+
     return ds.prefetch(tf.data.AUTOTUNE)
 
 
@@ -87,12 +125,12 @@ def channel_attention(x, ratio=8):
 
 
 # =========================================================
-# 🔥 STAGE 1 MODEL (Feature Learner)
+# 🔥 STAGE 1 MODEL
 # =========================================================
 def create_stage1_model():
 
     rgb_input = layers.Input(shape=(image_size, image_size, 3))
-    edge_input = layers.Input(shape=(image_size, image_size, 1))
+    edge_input = layers.Input(shape=(image_size, image_size, 2))  # 🔥 updated
 
     base = EfficientNetV2S(include_top=False, weights="imagenet", input_tensor=rgb_input)
     rgb_feat = base.get_layer(FUSION_LAYER).output
@@ -104,7 +142,6 @@ def create_stage1_model():
 
     x = layers.Resizing(rgb_feat.shape[1], rgb_feat.shape[2])(x)
 
-    # Attention
     rgb_feat = channel_attention(rgb_feat)
     x = channel_attention(x)
 
@@ -113,16 +150,30 @@ def create_stage1_model():
     fused = layers.Conv2D(256,3,padding='same',activation='relu')(fused)
     fused = layers.BatchNormalization()(fused)
 
-    # 👉 IMPORTANT: extract features BEFORE classification
     features = layers.GlobalAveragePooling2D(name="feature_layer")(fused)
 
     x = layers.BatchNormalization()(features)
     x = layers.Dropout(0.5)(x)
     outputs = layers.Dense(2, activation='softmax')(x)
 
-    model = tf.keras.Model(inputs=[rgb_input, edge_input], outputs=outputs)
+    return tf.keras.Model(inputs=[rgb_input, edge_input], outputs=outputs)
 
-    return model
+
+# -------------------------------
+# CALLBACKS
+# -------------------------------
+lr_schedule = ReduceLROnPlateau(
+    monitor='val_loss',
+    factor=0.3,
+    patience=2,
+    min_lr=1e-5   # 🔥 fixed
+)
+
+early_stop = EarlyStopping(
+    monitor='val_loss',
+    patience=5,
+    restore_best_weights=True
+)
 
 
 # -------------------------------
@@ -134,7 +185,7 @@ stage1_model = create_stage1_model()
 
 stage1_model.compile(
     optimizer=tf.keras.optimizers.Adam(1e-4),
-    loss="categorical_crossentropy",
+    loss=focal_loss(),   # 🔥 improved
     metrics=["accuracy"]
 )
 
@@ -148,70 +199,30 @@ checkpoint1 = ModelCheckpoint(
 stage1_model.fit(
     train_ds,
     validation_data=val_ds,
-    epochs=10,
-    callbacks=[checkpoint1]
+    epochs=20,
+    callbacks=[checkpoint1, lr_schedule, early_stop]
 )
 
 stage1_model.save(STAGE1_MODEL_PATH)
 
 
 # =========================================================
-# 🔥 STAGE 2 MODEL (Feature Transfer + Final Classifier)
+# 🔥 STAGE 2 (FULL FINE-TUNING)
 # =========================================================
 print("\n🔥 Training Stage 2")
 
-# Load best Stage 1
-stage1_model = tf.keras.models.load_model(f"{CHECKPOINT_DIR}/stage1_best.keras")
-
-# Extract feature layer
-feature_model = tf.keras.Model(
-    inputs=stage1_model.inputs,
-    outputs=stage1_model.get_layer("feature_layer").output
+stage2_model = tf.keras.models.load_model(
+    f"{CHECKPOINT_DIR}/stage1_best.keras",
+    custom_objects={'loss': focal_loss()}
 )
 
-feature_model.trainable = False   # 🔒 freeze Stage 1
+# 🔥 unfreeze ALL layers
+for layer in stage2_model.layers:
+    layer.trainable = True
 
-
-# -------------------------------
-# NEW MODEL
-# -------------------------------
-rgb_input = layers.Input(shape=(image_size, image_size, 3))
-edge_input = layers.Input(shape=(image_size, image_size, 1))
-
-# Stage 1 features
-stage1_features = feature_model([rgb_input, edge_input])
-
-# New RGB branch
-base2 = EfficientNetV2S(include_top=False, weights="imagenet", input_tensor=rgb_input)
-rgb_feat2 = base2.output
-rgb_feat2 = layers.GlobalAveragePooling2D()(rgb_feat2)
-
-# Edge branch again
-e = layers.Conv2D(32,3,padding='same',activation='relu')(edge_input)
-e = layers.MaxPooling2D(2)(e)
-e = layers.Conv2D(64,3,padding='same',activation='relu')(e)
-e = layers.GlobalAveragePooling2D()(e)
-
-# -------------------------------
-# FINAL FUSION
-# -------------------------------
-fused = layers.Concatenate()([rgb_feat2, e, stage1_features])
-
-x = layers.Dense(256, activation='relu')(fused)
-x = layers.BatchNormalization()(x)
-x = layers.Dropout(0.5)(x)
-
-outputs = layers.Dense(2, activation='softmax')(x)
-
-stage2_model = tf.keras.Model(inputs=[rgb_input, edge_input], outputs=outputs)
-
-
-# -------------------------------
-# COMPILE (LOW LR)
-# -------------------------------
 stage2_model.compile(
-    optimizer=tf.keras.optimizers.Adam(1e-5),
-    loss="categorical_crossentropy",
+    optimizer=tf.keras.optimizers.Adam(3e-6),  # 🔥 better LR
+    loss=focal_loss(),
     metrics=["accuracy"]
 )
 
@@ -225,15 +236,36 @@ checkpoint2 = ModelCheckpoint(
 stage2_model.fit(
     train_ds,
     validation_data=val_ds,
-    epochs=10,
-    callbacks=[checkpoint2]
+    epochs=20,
+    callbacks=[checkpoint2, lr_schedule, early_stop]
 )
+
+
+# -------------------------------
+# TEST-TIME AUGMENTATION
+# -------------------------------
+def tta_evaluate(model, dataset):
+    preds = []
+    for (img, edge), y in dataset:
+        p1 = model.predict([img, edge], verbose=0)
+        p2 = model.predict([tf.image.flip_left_right(img), edge], verbose=0)
+        preds.append((p1 + p2)/2)
+
+    preds = tf.concat(preds, axis=0)
+    true  = tf.concat([y for _,y in dataset], axis=0)
+
+    acc = tf.keras.metrics.categorical_accuracy(true, preds)
+    print("Final Test Accuracy (TTA):", tf.reduce_mean(acc).numpy())
 
 
 # -------------------------------
 # EVALUATION
 # -------------------------------
-loss, acc = stage2_model.evaluate(test_ds)
-print("Final Test Accuracy:", acc)
+best_model = tf.keras.models.load_model(
+    f"{CHECKPOINT_DIR}/stage2_best.keras",
+    custom_objects={'loss': focal_loss()}
+)
+
+tta_evaluate(best_model, test_ds)
 
 stage2_model.save(FINAL_MODEL_PATH)
