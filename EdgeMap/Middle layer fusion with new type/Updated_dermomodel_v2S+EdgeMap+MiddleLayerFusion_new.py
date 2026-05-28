@@ -36,7 +36,7 @@ batch_size = 16
 image_size = 256
 
 # Fusion layer (tune this)
-FUSION_LAYER = "block5e_add"
+FUSION_LAYER = "block4c_add"
 
 
 # Dataset + Edge Map

@@ -101,12 +101,12 @@ def create_dual_model(img_size):
     x = layers.Conv2D(32, 3, activation="relu", padding="same")(edge_input)
     x = layers.MaxPooling2D(2, padding="same")(x)
     x = layers.Conv2D(64, 3, activation="relu", padding="same")(x)
-    x = layers.MaxPooling2D(2, padding="same")(x)
-    x = layers.Conv2D(128, 3, activation="relu", padding="same")(x)
+    # x = layers.MaxPooling2D(2, padding="same")(x)
+    # x = layers.Conv2D(128, 3, activation="relu", padding="same")(x)
 
     # Resize to match EfficientNet feature map
     x = layers.Resizing(middle_feature.shape[1], middle_feature.shape[2])(x)
-    x = layers.Conv2D(middle_feature.shape[-1], 1, padding="same")(x)
+    # x = layers.Conv2D(middle_feature.shape[-1], 1, padding="same")(x)
 
     # Feature fusion
     fused = layers.Concatenate()([middle_feature, x])
