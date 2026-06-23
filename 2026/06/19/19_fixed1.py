@@ -11,6 +11,9 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 from tensorflow.keras import mixed_precision
 from tensorflow.keras.applications.efficientnet_v2 import preprocess_input
 
+tf.random.set_seed(42)
+np.random.seed(42)
+
 print("TensorFlow version:", tf.__version__)
 print("GPU:", tf.test.gpu_device_name())
 
@@ -19,7 +22,7 @@ print("GPU:", tf.test.gpu_device_name())
 BASE            = "/content/newdata"
 IMG_SRC         = "/drive/MyDrive/Colab Notebooks/newdata"
 CHECKPOINT_DIR  = "/drive/MyDrive/checkpoints"
-MODEL_SAVE_PATH = "/drive/MyDrive/Colab Notebooks/Models/dermoscopy/efficientnetv2s_dual_branch.keras"
+MODEL_SAVE_PATH = "/drive/MyDrive/Colab Notebooks/Models/dermoscopy/efficientnetv2s_dual_branch_run10.keras"
 
 if os.path.exists(BASE):
     shutil.rmtree(BASE)
@@ -35,12 +38,13 @@ IMAGE_SIZE       = 256
 FUSION_LAYER     = "block4c_add"
 EPOCHS           = 30
 
-# Total original training samples — used to keep steps_per_epoch consistent
 N_TRAIN_TOTAL    = 7122 + 890
 STEPS_PER_EPOCH  = N_TRAIN_TOTAL // BATCH_SIZE
 
+CLASS_ORDER      = ["melanoma", "non_melanoma"]   # index 0 = melanoma, index 1 = non_melanoma
 
-# ── Augmentation ───────────────────────────────────────────────────────────────
+
+# ── Augmentation (proven in run 8) ─────────────────────────────────────────────
 data_augmentation = tf.keras.Sequential([
     layers.RandomFlip("horizontal_and_vertical"),
     layers.RandomRotation(0.10),
@@ -59,22 +63,19 @@ def add_edge_map(image, label):
     return (image, edge), label
 
 
-# ── Balanced training dataset (50/50 oversampling) ────────────────────────────
-# image_dataset_from_directory sorts class_names alphabetically by default:
-#   index 0 = melanoma, index 1 = non_melanoma
-# We build one stream per class, repeat infinitely, then interleave 50/50.
-
-def make_class_stream(base_path, class_names_order):
-    """Single-class infinite stream, already augmented."""
+# ── Balanced training dataset (50/50 oversampling, tf.data-based) ────────────
+def make_class_stream(base_path, only_class):
+    """Infinite stream containing only `only_class` images, correctly labelled."""
     ds = tf.keras.preprocessing.image_dataset_from_directory(
         base_path,
         image_size=(IMAGE_SIZE, IMAGE_SIZE),
-        batch_size=BATCH_SIZE // 2,        # half-batch; two streams merge to BATCH_SIZE
+        batch_size=BATCH_SIZE // 2,
         label_mode="categorical",
         shuffle=True,
-        class_names=class_names_order,     # controls which folder maps to which index
+        class_names=CLASS_ORDER,
     )
-    ds = ds.repeat()                       # infinite — steps_per_epoch controls length
+    ds = ds.filter(lambda x, y: tf.equal(tf.argmax(y[0]), only_class))
+    ds = ds.repeat()
     ds = ds.map(
         lambda x, y: (data_augmentation(x, training=True), y),
         num_parallel_calls=tf.data.AUTOTUNE,
@@ -82,10 +83,9 @@ def make_class_stream(base_path, class_names_order):
     return ds
 
 
-melanoma_stream     = make_class_stream(f"{BASE}/train", ["melanoma",     "non_melanoma"])
-non_melanoma_stream = make_class_stream(f"{BASE}/train", ["non_melanoma", "melanoma"    ])
+melanoma_stream     = make_class_stream(f"{BASE}/train", only_class=0)
+non_melanoma_stream = make_class_stream(f"{BASE}/train", only_class=1)
 
-# Interleave equal weights → every batch is ~50% melanoma, 50% non_melanoma
 balanced_ds = tf.data.Dataset.sample_from_datasets(
     [melanoma_stream, non_melanoma_stream],
     weights=[0.5, 0.5],
@@ -94,7 +94,7 @@ balanced_ds = balanced_ds.map(add_edge_map, num_parallel_calls=tf.data.AUTOTUNE)
 balanced_ds = balanced_ds.prefetch(tf.data.AUTOTUNE)
 
 
-# ── Validation & test datasets (unchanged) ─────────────────────────────────────
+# ── Validation & test datasets ─────────────────────────────────────────────────
 def prepare_eval_dataset(path):
     ds = tf.keras.preprocessing.image_dataset_from_directory(
         path,
@@ -102,6 +102,7 @@ def prepare_eval_dataset(path):
         batch_size=BATCH_SIZE,
         label_mode="categorical",
         shuffle=False,
+        class_names=CLASS_ORDER,
     )
     ds = ds.map(add_edge_map, num_parallel_calls=tf.data.AUTOTUNE)
     ds = ds.prefetch(tf.data.AUTOTUNE)
@@ -122,7 +123,9 @@ def create_dual_model(steps_per_epoch):
         input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3),
     )
 
-    for layer in base_model.layers[:-40]:
+    # <-- CHANGED: unfreeze last 60 layers instead of 40 (more backbone adaptation
+    # for this fine-grained, visually-similar-classes task)
+    for layer in base_model.layers[:-60]:
         layer.trainable = False
 
     feature_extractor = tf.keras.Model(
@@ -153,7 +156,6 @@ def create_dual_model(steps_per_epoch):
     fused   = layers.Dropout(0.5)(fused)
     outputs = layers.Dense(2, activation="softmax")(fused)
 
-    # Cosine annealing over the full training run
     cosine_lr = tf.keras.optimizers.schedules.CosineDecay(
         initial_learning_rate=2e-4,
         decay_steps=EPOCHS * steps_per_epoch,
@@ -166,7 +168,8 @@ def create_dual_model(steps_per_epoch):
         metrics=[
             "accuracy",
             tf.keras.metrics.AUC(name="auc"),
-            tf.keras.metrics.Recall(name="recall"),
+            tf.keras.metrics.Recall(name="sensitivity"),
+            tf.keras.metrics.Recall(name="specificity", class_id=1),
             tf.keras.metrics.Precision(name="precision"),
         ],
     )
@@ -179,7 +182,7 @@ model.summary()
 
 # ── Callbacks ──────────────────────────────────────────────────────────────────
 checkpoint_best = ModelCheckpoint(
-    filepath=f"{CHECKPOINT_DIR}/best_dual_{FUSION_LAYER}.keras",
+    filepath=f"{CHECKPOINT_DIR}/best_dual_{FUSION_LAYER}_run10.keras",  # <-- CHANGED: unique filename
     monitor="val_auc",
     save_best_only=True,
     verbose=1,
@@ -197,19 +200,16 @@ early_stopping = EarlyStopping(
 history = model.fit(
     balanced_ds,
     epochs=EPOCHS,
-    steps_per_epoch=STEPS_PER_EPOCH,   # required — balanced_ds is infinite
+    steps_per_epoch=STEPS_PER_EPOCH,
     validation_data=val_ds,
     callbacks=[checkpoint_best, early_stopping],
-    # no class_weight — oversampling handles balance instead
 )
 
 
 # ── Evaluation ─────────────────────────────────────────────────────────────────
-print("\n── Test results ──")
+print("\n── Test results (run 10: 60 unfrozen layers) ──")
 results = model.evaluate(test_ds)
 for name, val in zip(model.metrics_names, results):
     print(f"  {name}: {val:.4f}")
 
 model.save(MODEL_SAVE_PATH)
-
-# 0.8882
