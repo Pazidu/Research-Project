@@ -22,11 +22,8 @@ print("GPU:", tf.test.gpu_device_name())
 # =========================================================
 
 BASE = "/content/newdata"
-
 IMG_SRC = "/drive/MyDrive/Colab Notebooks/newdata"
-
 CHECKPOINT_DIR = "/drive/MyDrive/checkpoints"
-
 MODEL_SAVE_PATH = "/drive/MyDrive/Colab Notebooks/Models/dermoscopy/final_model.keras"
 
 # =========================================================
