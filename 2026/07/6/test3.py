@@ -180,9 +180,14 @@ def create_model():
 
     model = tf.keras.Model(inputs=[rgb_input, edge_input], outputs=outputs)
 
+    loss_fn = tf.keras.losses.CategoricalFocalCrossentropy(
+    gamma=2.0,
+    alpha=[0.85,0.15]
+    )
+
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(1e-4),
-        loss=loss_fn,
+    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+    loss=loss_fn,
         metrics=[
             "accuracy",
             tf.keras.metrics.AUC(name="auc"),
