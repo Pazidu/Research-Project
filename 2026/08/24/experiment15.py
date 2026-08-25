@@ -1,5 +1,5 @@
 # ================================================================
-# CELL 1 - IMPORTS
+# V15 MELANOMA CLASSIFICATION
 # ================================================================
 
 import os
@@ -35,7 +35,7 @@ from sklearn.metrics import (
 warnings.filterwarnings("ignore")
 
 print("=" * 70)
-print("V13 MELANOMA CLASSIFICATION")
+print("V15 MELANOMA CLASSIFICATION")
 print("=" * 70)
 
 print("TensorFlow:", tf.__version__)
@@ -123,11 +123,11 @@ else:
     )
 
 # ================================================================
-# CELL 5 - DATASET CONFIGURATION
+# CELL 5 - V15 DATASET CONFIGURATION
 # ================================================================
 
 print("\n" + "=" * 70)
-print("V13 DATASET CONFIGURATION")
+print("V15 DATASET CONFIGURATION")
 print("=" * 70)
 
 
@@ -149,7 +149,7 @@ DATASET = "/content/newdata"
 
 
 # ------------------------------------------------
-# DATASET ROOT
+# IMPORTANT DATASET ROOT
 # ------------------------------------------------
 
 DATASET_ROOT = DATASET
@@ -182,7 +182,7 @@ AUTOTUNE = tf.data.AUTOTUNE
 
 STAGE1_EPOCHS = 12
 
-STAGE2_EPOCHS = 12
+STAGE2_EPOCHS = 10
 
 
 # ------------------------------------------------
@@ -197,7 +197,7 @@ MIN_LR = 1e-7
 
 
 # ------------------------------------------------
-# CLASS WEIGHTS
+# V15 MELANOMA WEIGHT
 # ------------------------------------------------
 
 NON_MELANOMA_WEIGHT = 1.0
@@ -213,7 +213,7 @@ FINE_TUNE_FRACTION = 0.35
 
 
 # ------------------------------------------------
-# V13 THRESHOLD POLICY
+# V15 THRESHOLD POLICY
 # ------------------------------------------------
 
 MIN_REQUIRED_SENSITIVITY = 0.70
@@ -232,10 +232,9 @@ print("\nImage size:", IMG_SIZE)
 
 print("Batch size:", BATCH_SIZE)
 
-print(
-    "Melanoma weight:",
-    MELANOMA_WEIGHT
-)
+print("Non-melanoma weight:", NON_MELANOMA_WEIGHT)
+
+print("Melanoma weight:", MELANOMA_WEIGHT)
 
 print(
     "Minimum required sensitivity:",
@@ -243,11 +242,11 @@ print(
 )
 
 # ================================================================
-# CELL 6 - VERIFY DATASET SOURCE
+# CELL 6 - DATASET STRUCTURE CHECK
 # ================================================================
 
 print("\n" + "=" * 70)
-print("VERIFYING DATASET SOURCE")
+print("CHECKING SOURCE DATASET")
 print("=" * 70)
 
 
@@ -265,7 +264,6 @@ def has_required_dataset_structure(path):
     ]
 
     if not os.path.isdir(path):
-
         return False
 
     for split in required_splits:
@@ -276,7 +274,6 @@ def has_required_dataset_structure(path):
         )
 
         if not os.path.isdir(split_path):
-
             return False
 
         for class_name in required_classes:
@@ -287,7 +284,6 @@ def has_required_dataset_structure(path):
             )
 
             if not os.path.isdir(class_path):
-
                 return False
 
     return True
@@ -302,19 +298,21 @@ if not os.path.exists(IMG_SRC):
 
     raise FileNotFoundError(
 
-        "\nDataset source was not found:\n"
+        "Dataset source was not found:\n\n"
         f"{IMG_SRC}\n\n"
 
         "Expected structure:\n"
 
         "newdata_backup/\n"
-        "  train/melanoma\n"
-        "  train/non_melanoma\n"
-        "  valid/melanoma\n"
-        "  valid/non_melanoma\n"
-        "  test/melanoma\n"
-        "  test/non_melanoma\n"
-
+        "  train/\n"
+        "    melanoma/\n"
+        "    non_melanoma/\n"
+        "  valid/\n"
+        "    melanoma/\n"
+        "    non_melanoma/\n"
+        "  test/\n"
+        "    melanoma/\n"
+        "    non_melanoma/"
     )
 
 
@@ -322,54 +320,46 @@ if not has_required_dataset_structure(IMG_SRC):
 
     raise FileNotFoundError(
 
-        "\nDataset exists but structure is incorrect.\n\n"
+        "Dataset exists, but the required "
+        "directory structure was not found.\n\n"
 
-        "Expected:\n"
-
-        f"{IMG_SRC}/\n"
-        "  train/melanoma\n"
-        "  train/non_melanoma\n"
-        "  valid/melanoma\n"
-        "  valid/non_melanoma\n"
-        "  test/melanoma\n"
-        "  test/non_melanoma\n"
-
+        f"Dataset: {IMG_SRC}"
     )
 
 
-print("\nDataset source verified successfully.")
+print("\nSource dataset structure verified.")
 
 # ================================================================
 # CELL 7 - COPY DATASET TO LOCAL COLAB STORAGE
 # ================================================================
 
 print("\n" + "=" * 70)
-print("SETTING UP LOCAL DATASET")
+print("COPYING DATASET TO LOCAL COLAB STORAGE")
 print("=" * 70)
 
 
+# ------------------------------------------------
+# REMOVE EXISTING LOCAL DATASET
+# ------------------------------------------------
+
 if os.path.exists(DATASET):
 
-    print(
-        "Removing old local dataset..."
-    )
+    print("Removing existing local dataset...")
 
     shutil.rmtree(DATASET)
 
 
+# ------------------------------------------------
+# COPY DATASET
+# ------------------------------------------------
+
 print("\nCopying dataset:")
 
-print(
-    IMG_SRC
-)
+print("FROM:")
+print(IMG_SRC)
 
-print(
-    "\nTo:"
-)
-
-print(
-    DATASET
-)
+print("\nTO:")
+print(DATASET)
 
 
 shutil.copytree(
@@ -378,33 +368,38 @@ shutil.copytree(
 )
 
 
+# ------------------------------------------------
+# VERIFY COPIED DATASET
+# ------------------------------------------------
+
 if not has_required_dataset_structure(DATASET):
 
     raise FileNotFoundError(
 
-        "Copied dataset structure is invalid."
+        "The copied local dataset does not have "
+        "the required directory structure.\n\n"
 
+        f"Dataset: {DATASET}"
     )
 
 
-print("\nDataset copied successfully.")
+print("\nLocal dataset copied successfully.")
 
-print(
-    "Dataset structure verified."
-)
+print("Local dataset structure verified.")
 
+# ================================================================
+# CELL 8 - DATASET PATHS
+# ================================================================
 
 TRAIN_DIR = os.path.join(
     DATASET,
     "train"
 )
 
-
 VALID_DIR = os.path.join(
     DATASET,
     "valid"
 )
-
 
 TEST_DIR = os.path.join(
     DATASET,
@@ -412,30 +407,31 @@ TEST_DIR = os.path.join(
 )
 
 
-print("\nFinal dataset paths:")
+print("=" * 70)
+print("FINAL DATASET PATHS")
+print("=" * 70)
 
-print(
-    "Train:",
-    TRAIN_DIR
-)
+print("Source:")
+print(IMG_SRC)
 
-print(
-    "Valid:",
-    VALID_DIR
-)
+print("\nLocal dataset:")
+print(DATASET)
 
-print(
-    "Test :",
-    TEST_DIR
-)
+print("\nTrain:")
+print(TRAIN_DIR)
+
+print("\nValid:")
+print(VALID_DIR)
+
+print("\nTest:")
+print(TEST_DIR)
 
 # ================================================================
-# CELL 8 - OUTPUT DIRECTORIES
+# CELL 9 - OUTPUT DIRECTORIES
 # ================================================================
 
 CHECKPOINT_DIR = (
-    "/content/drive/MyDrive/"
-    "checkpoints"
+    "/content/drive/MyDrive/checkpoints"
 )
 
 
@@ -450,14 +446,13 @@ os.makedirs(
     exist_ok=True
 )
 
-
 os.makedirs(
     MODEL_DIR,
     exist_ok=True
 )
 
 
-MODEL_NAME = "efficientnet_v13"
+MODEL_NAME = "efficientnet_v15"
 
 
 BEST_MODEL_PATH = os.path.join(
@@ -515,27 +510,23 @@ THRESHOLD_RESULTS_PATH = os.path.join(
 
 
 print("=" * 70)
-print("OUTPUT DIRECTORIES")
+print("V15 OUTPUT PATHS")
 print("=" * 70)
 
-print(
-    "Checkpoint:"
-)
+print("Checkpoint:")
+print(BEST_MODEL_PATH)
 
-print(
-    CHECKPOINT_DIR
-)
+print("\nFinal model:")
+print(FINAL_MODEL_PATH)
 
-print(
-    "\nModel:"
-)
+print("\nThreshold:")
+print(THRESHOLD_PATH)
 
-print(
-    MODEL_DIR
-)
+print("\nResults:")
+print(RESULTS_PATH)
 
 # ================================================================
-# CELL 9 - CHECK DATASET DIRECTORIES
+# CELL 10 - CHECK DATASET DIRECTORIES
 # ================================================================
 
 print("\n" + "=" * 70)
@@ -544,13 +535,9 @@ print("=" * 70)
 
 
 for directory in [
-
     TRAIN_DIR,
-
     VALID_DIR,
-
     TEST_DIR
-
 ]:
 
     if not os.path.exists(directory):
@@ -559,23 +546,15 @@ for directory in [
             f"Dataset directory not found:\n{directory}"
         )
 
-    print(
-        "OK:",
-        directory
-    )
+    print("OK:", directory)
 
 
 print("\nDataset directory structure:")
 
-
 for split in [
-
     "train",
-
     "valid",
-
     "test"
-
 ]:
 
     split_path = os.path.join(
@@ -583,68 +562,47 @@ for split in [
         split
     )
 
-    print(
-        f"\n{split.upper()}:"
-    )
-
+    print(f"\n{split.upper()}:")
 
     for class_name in CLASS_NAMES:
 
         class_path = os.path.join(
-
             split_path,
-
             class_name
-
         )
 
         print(
-            " ",
+            "  ",
             class_name,
             "->",
             class_path
         )
 
 # ================================================================
-# CELL 10 - DATASET COUNTS
+# CELL 11 - DATASET COUNTS
 # ================================================================
 
 def count_images(directory):
 
     counts = {
-
         "melanoma": 0,
-
         "non_melanoma": 0
-
     }
-
 
     extensions = {
-
         ".jpg",
-
         ".jpeg",
-
         ".png",
-
         ".bmp",
-
         ".webp"
-
     }
-
 
     for class_name in counts:
 
         class_dir = os.path.join(
-
             directory,
-
             class_name
-
         )
-
 
         if not os.path.exists(class_dir):
 
@@ -654,7 +612,6 @@ def count_images(directory):
             )
 
             continue
-
 
         for root, _, files in os.walk(
             class_dir
@@ -670,7 +627,6 @@ def count_images(directory):
                         class_name
                     ] += 1
 
-
     return counts
 
 
@@ -678,11 +634,9 @@ train_counts = count_images(
     TRAIN_DIR
 )
 
-
 valid_counts = count_images(
     VALID_DIR
 )
-
 
 test_counts = count_images(
     TEST_DIR
@@ -690,23 +644,17 @@ test_counts = count_images(
 
 
 print("\n" + "=" * 70)
-print("DATASET COUNTS")
+print("V15 DATASET COUNTS")
 print("=" * 70)
 
 
 for name, counts in [
-
     ("TRAIN", train_counts),
-
     ("VALID", valid_counts),
-
     ("TEST", test_counts)
-
 ]:
 
-    print(
-        f"\n{name}"
-    )
+    print(f"\n{name}")
 
     print(
         "melanoma:",
@@ -718,26 +666,14 @@ for name, counts in [
         counts["non_melanoma"]
     )
 
-
-print("\nTOTALS")
-
-print(
-    "Train:",
-    sum(train_counts.values())
-)
-
-print(
-    "Valid:",
-    sum(valid_counts.values())
-)
-
-print(
-    "Test:",
-    sum(test_counts.values())
-)
+    print(
+        "total:",
+        counts["melanoma"] +
+        counts["non_melanoma"]
+    )
 
 # ================================================================
-# CELL 11 - CREATE DATASETS
+# CELL 12 - CREATE DATASETS
 # ================================================================
 
 print("\n" + "=" * 70)
@@ -756,11 +692,8 @@ train_ds = tf.keras.utils.image_dataset_from_directory(
     class_names=CLASS_NAMES,
 
     image_size=(
-
         IMG_SIZE,
-
         IMG_SIZE
-
     ),
 
     batch_size=BATCH_SIZE,
@@ -768,7 +701,6 @@ train_ds = tf.keras.utils.image_dataset_from_directory(
     shuffle=True,
 
     seed=SEED
-
 )
 
 
@@ -783,17 +715,13 @@ valid_ds = tf.keras.utils.image_dataset_from_directory(
     class_names=CLASS_NAMES,
 
     image_size=(
-
         IMG_SIZE,
-
         IMG_SIZE
-
     ),
 
     batch_size=BATCH_SIZE,
 
     shuffle=False
-
 )
 
 
@@ -808,17 +736,13 @@ test_ds = tf.keras.utils.image_dataset_from_directory(
     class_names=CLASS_NAMES,
 
     image_size=(
-
         IMG_SIZE,
-
         IMG_SIZE
-
     ),
 
     batch_size=BATCH_SIZE,
 
     shuffle=False
-
 )
 
 
@@ -826,33 +750,25 @@ print("\nClass names:")
 print(CLASS_NAMES)
 
 
-print("\nLABEL MAPPING")
+print("\nIMPORTANT LABEL MAPPING")
 
-print(
-    "0 = non_melanoma"
-)
+print("0 = non_melanoma")
 
-print(
-    "1 = melanoma"
-)
+print("1 = melanoma")
 
-print(
-    "MODEL OUTPUT = P(melanoma)"
-)
+print("MODEL OUTPUT = P(melanoma)")
 
 # ================================================================
-# CELL 12 - PERFORMANCE SETTINGS
+# CELL 13 - PERFORMANCE SETTINGS
 # ================================================================
 
 train_ds = train_ds.prefetch(
     AUTOTUNE
 )
 
-
 valid_ds = valid_ds.prefetch(
     AUTOTUNE
 )
-
 
 test_ds = test_ds.prefetch(
     AUTOTUNE
@@ -864,8 +780,13 @@ print(
 )
 
 # ================================================================
-# CELL 13 - V13 DATA AUGMENTATION
+# CELL 14 - V15 DATA AUGMENTATION
 # ================================================================
+
+print("\n" + "=" * 70)
+print("CREATING V15 DATA AUGMENTATION")
+print("=" * 70)
+
 
 data_augmentation = tf.keras.Sequential(
 
@@ -881,33 +802,43 @@ data_augmentation = tf.keras.Sequential(
 
         tf.keras.layers.RandomZoom(
             height_factor=0.10,
-
             width_factor=0.10
         ),
 
         tf.keras.layers.RandomTranslation(
             height_factor=0.05,
-
             width_factor=0.05
         ),
 
         tf.keras.layers.RandomContrast(
             factor=0.10
+        ),
+
+        # ------------------------------------------------
+        # V15 additional augmentation
+        # ------------------------------------------------
+
+        tf.keras.layers.RandomBrightness(
+            factor=0.08
         )
 
     ],
 
-    name="v13_augmentation"
-
+    name="v15_augmentation"
 )
 
 
 print(
-    "V13 data augmentation created."
+    "V15 augmentation created."
+)
+
+print(
+    "Additional augmentation:",
+    "RandomBrightness(0.04)"
 )
 
 # ================================================================
-# CELL 14 - MELANOMA WEIGHTED BCE
+# CELL 15 - MELANOMA WEIGHTED BCE
 # ================================================================
 
 @tf.keras.utils.register_keras_serializable()
@@ -916,67 +847,41 @@ class MelanomaWeightedBinaryCrossentropy(
 ):
 
     def __init__(
-
         self,
-
         non_melanoma_weight=1.0,
-
         melanoma_weight=1.25,
-
         name="melanoma_weighted_bce",
-
         **kwargs
-
     ):
 
         super().__init__(
-
             name=name,
-
             **kwargs
-
         )
-
 
         self.non_melanoma_weight = float(
-
             non_melanoma_weight
-
         )
 
-
         self.melanoma_weight = float(
-
             melanoma_weight
-
         )
 
 
     def call(
-
         self,
-
         y_true,
-
         y_pred
-
     ):
 
         y_true = tf.cast(
-
             y_true,
-
             tf.float32
-
         )
 
-
         y_pred = tf.cast(
-
             y_pred,
-
             tf.float32
-
         )
 
 
@@ -984,31 +889,21 @@ class MelanomaWeightedBinaryCrossentropy(
 
 
         y_pred = tf.clip_by_value(
-
             y_pred,
-
             epsilon,
-
             1.0 - epsilon
-
         )
 
 
         bce = -(
 
             y_true *
-
             tf.math.log(y_pred)
 
             +
 
             (1.0 - y_true) *
-
-            tf.math.log(
-
-                1.0 - y_pred
-
-            )
+            tf.math.log(1.0 - y_pred)
 
         )
 
@@ -1016,13 +911,11 @@ class MelanomaWeightedBinaryCrossentropy(
         weights = (
 
             y_true *
-
             self.melanoma_weight
 
             +
 
             (1.0 - y_true) *
-
             self.non_melanoma_weight
 
         )
@@ -1035,7 +928,6 @@ class MelanomaWeightedBinaryCrossentropy(
 
         config = super().get_config()
 
-
         config.update({
 
             "non_melanoma_weight":
@@ -1046,11 +938,10 @@ class MelanomaWeightedBinaryCrossentropy(
 
         })
 
-
         return config
 
 # ================================================================
-# CELL 15 - METRICS
+# CELL 16 - METRICS
 # ================================================================
 
 def create_metrics():
@@ -1087,28 +978,23 @@ print(
 )
 
 # ================================================================
-# CELL 16 - CREATE V13 EFFICIENTNETV2-S
+# CELL 17 - CREATE V15 MODEL
 # ================================================================
 
 print("\n" + "=" * 70)
-print("CREATING V13 MODEL")
+print("CREATING V15 MODEL")
 print("=" * 70)
 
 
 inputs = tf.keras.Input(
 
     shape=(
-
         IMG_SIZE,
-
         IMG_SIZE,
-
         3
-
     ),
 
     name="image"
-
 )
 
 
@@ -1124,13 +1010,9 @@ backbone = tf.keras.applications.EfficientNetV2S(
     weights="imagenet",
 
     input_shape=(
-
         IMG_SIZE,
-
         IMG_SIZE,
-
         3
-
     ),
 
     pooling=None,
@@ -1138,7 +1020,6 @@ backbone = tf.keras.applications.EfficientNetV2S(
     include_preprocessing=True,
 
     name="efficientnetv2-s"
-
 )
 
 
@@ -1146,47 +1027,32 @@ backbone.trainable = False
 
 
 x = backbone(
-
     x,
-
     training=False
-
 )
 
 
 x = tf.keras.layers.GlobalAveragePooling2D(
-
     name="global_average_pooling"
-
 )(x)
 
 
 x = tf.keras.layers.Dropout(
-
     0.35,
-
     name="dropout_1"
-
 )(x)
 
 
 x = tf.keras.layers.Dense(
-
     128,
-
     activation="swish",
-
     name="classifier_dense"
-
 )(x)
 
 
 x = tf.keras.layers.Dropout(
-
     0.25,
-
     name="dropout_2"
-
 )(x)
 
 
@@ -1207,14 +1073,12 @@ model = tf.keras.Model(
 
     outputs=outputs,
 
-    name="efficientnet_v13"
+    name="efficientnet_v15"
 
 )
 
 
-print(
-    "\nV13 model created successfully."
-)
+print("\nModel created successfully.")
 
 print(
     "Model:",
@@ -1226,18 +1090,23 @@ print(
     backbone.name
 )
 
+print(
+    "Melanoma weight:",
+    MELANOMA_WEIGHT
+)
+
 # ================================================================
-# CELL 17 - MODEL SUMMARY
+# CELL 18 - MODEL SUMMARY
 # ================================================================
 
 model.summary()
 
 # ================================================================
-# CELL 18 - COMPILE STAGE 1
+# CELL 19 - COMPILE STAGE 1
 # ================================================================
 
 print("\n" + "=" * 70)
-print("COMPILING V13 STAGE 1")
+print("COMPILING V15 STAGE 1")
 print("=" * 70)
 
 
@@ -1248,7 +1117,6 @@ loss_fn = MelanomaWeightedBinaryCrossentropy(
 
     melanoma_weight=
         MELANOMA_WEIGHT
-
 )
 
 
@@ -1268,12 +1136,15 @@ model.compile(
 )
 
 
+print("Stage 1 compiled.")
+
 print(
-    "Stage 1 compiled."
+    "Learning rate:",
+    STAGE1_LR
 )
 
 # ================================================================
-# CELL 19 - STAGE 1 CALLBACKS
+# CELL 20 - STAGE 1 CALLBACKS
 # ================================================================
 
 checkpoint = tf.keras.callbacks.ModelCheckpoint(
@@ -1289,7 +1160,6 @@ checkpoint = tf.keras.callbacks.ModelCheckpoint(
     save_weights_only=False,
 
     verbose=1
-
 )
 
 
@@ -1306,7 +1176,6 @@ reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
     min_lr=MIN_LR,
 
     verbose=1
-
 )
 
 
@@ -1321,7 +1190,6 @@ early_stop = tf.keras.callbacks.EarlyStopping(
     restore_best_weights=True,
 
     verbose=1
-
 )
 
 
@@ -1330,12 +1198,12 @@ print(
 )
 
 # ================================================================
-# CELL 20 - STAGE 1 TRAINING
+# CELL 21 - STAGE 1 TRAINING
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V13 STAGE 1 - FROZEN EFFICIENTNETV2-S")
+print("V15 STAGE 1 - FROZEN EFFICIENTNETV2-S")
 print("=" * 70)
 
 
@@ -1344,10 +1212,14 @@ print(
     MELANOMA_WEIGHT
 )
 
-
 print(
     "Backbone trainable:",
     backbone.trainable
+)
+
+print(
+    "Stage 1 epochs:",
+    STAGE1_EPOCHS
 )
 
 
@@ -1370,15 +1242,14 @@ history_stage1 = model.fit(
     ],
 
     verbose=1
-
 )
 
 # ================================================================
-# CELL 21 - LOAD BEST STAGE 1 MODEL
+# CELL 22 - LOAD BEST STAGE 1 MODEL
 # ================================================================
 
 print("\n" + "=" * 70)
-print("LOADING BEST V13 STAGE 1 MODEL")
+print("LOADING BEST V15 STAGE 1 MODEL")
 print("=" * 70)
 
 
@@ -1387,7 +1258,6 @@ best_stage1_model = tf.keras.models.load_model(
     BEST_MODEL_PATH,
 
     compile=False
-
 )
 
 
@@ -1397,10 +1267,11 @@ print(
 
 
 backbone = best_stage1_model.get_layer(
-
     "efficientnetv2-s"
-
 )
+
+
+model = best_stage1_model
 
 
 print(
@@ -1408,15 +1279,12 @@ print(
     backbone.name
 )
 
-
-model = best_stage1_model
-
 # ================================================================
-# CELL 22 - V13 FINE-TUNING SETUP
+# CELL 23 - FINE-TUNING SETUP
 # ================================================================
 
 print("\n" + "=" * 70)
-print("PREPARING V13 FINE-TUNING")
+print("PREPARING V15 FINE-TUNING")
 print("=" * 70)
 
 
@@ -1431,7 +1299,6 @@ total_layers = len(
 fine_tune_from = int(
 
     total_layers *
-
     (1.0 - FINE_TUNE_FRACTION)
 
 )
@@ -1441,7 +1308,6 @@ print(
     "Total backbone layers:",
     total_layers
 )
-
 
 print(
     "Fine-tuning from layer:",
@@ -1463,17 +1329,12 @@ for layer in backbone.layers:
 # ------------------------------------------------
 
 for layer in backbone.layers[
-
     fine_tune_from:
-
 ]:
 
     if isinstance(
-
         layer,
-
         tf.keras.layers.BatchNormalization
-
     ):
 
         layer.trainable = False
@@ -1486,9 +1347,7 @@ for layer in backbone.layers[
 trainable_count = sum(
 
     1
-
     for layer in backbone.layers
-
     if layer.trainable
 
 )
@@ -1500,11 +1359,11 @@ print(
 )
 
 # ================================================================
-# CELL 23 - COMPILE V13 STAGE 2
+# CELL 24 - COMPILE STAGE 2
 # ================================================================
 
 print("\n" + "=" * 70)
-print("COMPILING V13 STAGE 2")
+print("COMPILING V15 STAGE 2")
 print("=" * 70)
 
 
@@ -1532,12 +1391,15 @@ model.compile(
 )
 
 
+print("Stage 2 compiled.")
+
 print(
-    "Stage 2 compiled."
+    "Learning rate:",
+    STAGE2_LR
 )
 
 # ================================================================
-# CELL 24 - STAGE 2 CALLBACKS
+# CELL 25 - STAGE 2 CALLBACKS
 # ================================================================
 
 checkpoint_stage2 = tf.keras.callbacks.ModelCheckpoint(
@@ -1553,7 +1415,6 @@ checkpoint_stage2 = tf.keras.callbacks.ModelCheckpoint(
     save_weights_only=False,
 
     verbose=1
-
 )
 
 
@@ -1570,7 +1431,6 @@ reduce_lr_stage2 = tf.keras.callbacks.ReduceLROnPlateau(
     min_lr=MIN_LR,
 
     verbose=1
-
 )
 
 
@@ -1585,7 +1445,6 @@ early_stop_stage2 = tf.keras.callbacks.EarlyStopping(
     restore_best_weights=True,
 
     verbose=1
-
 )
 
 
@@ -1594,12 +1453,12 @@ print(
 )
 
 # ================================================================
-# CELL 25 - V13 STAGE 2 TRAINING
+# CELL 26 - STAGE 2 TRAINING
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V13 STAGE 2 - FINE-TUNING EFFICIENTNETV2-S")
+print("V15 STAGE 2 - FINE-TUNING EFFICIENTNETV2-S")
 print("=" * 70)
 
 
@@ -1608,10 +1467,14 @@ print(
     trainable_count
 )
 
-
 print(
     "Fine-tuning learning rate:",
     STAGE2_LR
+)
+
+print(
+    "Stage 2 epochs:",
+    STAGE2_EPOCHS
 )
 
 
@@ -1634,16 +1497,15 @@ history_stage2 = model.fit(
     ],
 
     verbose=1
-
 )
 
 # ================================================================
-# CELL 26 - LOAD ABSOLUTE BEST V13 MODEL
+# CELL 27 - LOAD ABSOLUTE BEST V15 MODEL
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("LOADING ABSOLUTE BEST V13 MODEL")
+print("LOADING ABSOLUTE BEST V15 MODEL")
 print("=" * 70)
 
 
@@ -1652,24 +1514,20 @@ best_model = tf.keras.models.load_model(
     BEST_MODEL_PATH,
 
     compile=False
-
 )
 
 
 print(
-    "Absolute best V13 model loaded."
+    "Absolute best V15 model loaded."
 )
 
 # ================================================================
-# CELL 27 - PREDICTION FUNCTION
+# CELL 28 - PREDICTION FUNCTION
 # ================================================================
 
 def get_predictions(
-
     model,
-
     dataset
-
 ):
 
     probabilities = []
@@ -1722,14 +1580,13 @@ def get_predictions(
 
     return labels, probabilities
 
-
 # ================================================================
-# CELL 28 - V13 VALIDATION PREDICTIONS
+# CELL 29 - V15 VALIDATION PREDICTIONS
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V13 VALIDATION PREDICTIONS")
+print("V15 VALIDATION PREDICTIONS")
 print("=" * 70)
 
 
@@ -1747,12 +1604,10 @@ print(
     len(y_val)
 )
 
-
 print(
     "Validation melanoma:",
     int(np.sum(y_val == 1))
 )
-
 
 print(
     "Validation non-melanoma:",
@@ -1760,8 +1615,13 @@ print(
 )
 
 # ================================================================
-# CELL 29 - V13 VALIDATION ROC / PR
+# CELL 30 - V15 VALIDATION PERFORMANCE
 # ================================================================
+
+print("\n" + "=" * 70)
+print("V15 VALIDATION PERFORMANCE")
+print("=" * 70)
+
 
 val_roc_auc = roc_auc_score(
 
@@ -1781,12 +1641,6 @@ val_pr_auc = average_precision_score(
 )
 
 
-print("\n")
-print("=" * 70)
-print("V13 VALIDATION PERFORMANCE")
-print("=" * 70)
-
-
 print(
     "Validation ROC-AUC:",
     f"{val_roc_auc:.4f}"
@@ -1799,7 +1653,7 @@ print(
 )
 
 # ================================================================
-# CELL 30 - THRESHOLD EVALUATION
+# CELL 31 - THRESHOLD EVALUATION
 # ================================================================
 
 def evaluate_threshold(
@@ -1932,12 +1786,12 @@ def evaluate_threshold(
     }
 
 # ================================================================
-# CELL 31 - V13 VALIDATION THRESHOLD SEARCH
+# CELL 32 - V15 VALIDATION THRESHOLD SEARCH
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V13 VALIDATION THRESHOLD SEARCH")
+print("V15 VALIDATION THRESHOLD SEARCH")
 print("=" * 70)
 
 
@@ -1968,16 +1822,12 @@ for threshold in thresholds:
     )
 
     threshold_results.append(
-
         result
-
     )
 
 
 threshold_df = pd.DataFrame(
-
     threshold_results
-
 )
 
 
@@ -1997,18 +1847,14 @@ best_f1_row = threshold_df.loc[
 
 best_balanced_row = threshold_df.loc[
 
-    threshold_df[
-        "balanced_accuracy"
-    ].idxmax()
+    threshold_df["balanced_accuracy"].idxmax()
 
 ]
 
 
 best_youden_row = threshold_df.loc[
 
-    threshold_df[
-        "youden_j"
-    ].idxmax()
+    threshold_df["youden_j"].idxmax()
 
 ]
 
@@ -2041,12 +1887,12 @@ print(
 )
 
 # ================================================================
-# CELL 32 - SENSITIVITY-CONSTRAINED THRESHOLD SEARCH
+# CELL 33 - V15 SENSITIVITY-CONSTRAINED SEARCH
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V13 SENSITIVITY-CONSTRAINED THRESHOLD SEARCH")
+print("V15 SENSITIVITY-CONSTRAINED THRESHOLD SEARCH")
 print("=" * 70)
 
 
@@ -2122,25 +1968,32 @@ for target in sensitivity_targets:
     )
 
 # ================================================================
-# CELL 33 - SELECT FINAL V13 THRESHOLD
+# CELL 34 - SELECT FINAL V15 THRESHOLD
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("SELECTING V13 FINAL THRESHOLD")
+print("SELECTING V15 FINAL THRESHOLD")
 print("=" * 70)
 
 
 # ------------------------------------------------
-# Select the threshold with maximum F1
-# while maintaining sensitivity >= 70%.
+# Minimum sensitivity requirement
+# ------------------------------------------------
+
+minimum_sensitivity = (
+    MIN_REQUIRED_SENSITIVITY
+)
+
+
+# ------------------------------------------------
+# Eligible thresholds
 # ------------------------------------------------
 
 eligible_f1 = threshold_df[
 
     threshold_df["sensitivity"]
-
-    >= MIN_REQUIRED_SENSITIVITY
+    >= minimum_sensitivity
 
 ]
 
@@ -2149,13 +2002,17 @@ if len(eligible_f1) == 0:
 
     raise RuntimeError(
 
-        "No threshold satisfies the required "
-        "minimum sensitivity."
-
+        "No validation threshold satisfies "
+        f"sensitivity >= {minimum_sensitivity:.2f}"
     )
 
 
-best_constrained_f1_row = eligible_f1.loc[
+# ------------------------------------------------
+# IMPORTANT:
+# Maximize F1 while maintaining >=70% sensitivity
+# ------------------------------------------------
+
+best_constrained_f1 = eligible_f1.loc[
 
     eligible_f1["f1"].idxmax()
 
@@ -2164,9 +2021,7 @@ best_constrained_f1_row = eligible_f1.loc[
 
 FINAL_THRESHOLD = float(
 
-    best_constrained_f1_row[
-        "threshold"
-    ]
+    best_constrained_f1["threshold"]
 
 )
 
@@ -2175,13 +2030,17 @@ THRESHOLD_REASON = (
 
     "maximum validation F1 subject to "
     "validation sensitivity >= 70%"
+)
 
+
+selected_validation_result = (
+    best_constrained_f1.to_dict()
 )
 
 
 print(
     "Minimum required sensitivity:",
-    MIN_REQUIRED_SENSITIVITY
+    minimum_sensitivity
 )
 
 
@@ -2202,44 +2061,31 @@ print(
 )
 
 
-for metric in [
-
+for key in [
     "accuracy",
-
     "precision",
-
     "sensitivity",
-
     "specificity",
-
     "f1",
-
     "balanced_accuracy",
-
     "tn",
-
     "fp",
-
     "fn",
-
     "tp"
-
 ]:
 
     print(
-
-        f"{metric}: "
-        f"{best_constrained_f1_row[metric]:.4f}"
-
+        f"{key}:",
+        f"{selected_validation_result[key]:.4f}"
     )
 
 # ================================================================
-# CELL 34 - V13 TEST PREDICTIONS
+# CELL 35 - V15 TEST PREDICTIONS
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V13 TEST PREDICTIONS")
+print("V15 TEST PREDICTIONS")
 print("=" * 70)
 
 
@@ -2270,8 +2116,14 @@ print(
 )
 
 # ================================================================
-# CELL 35 - V13 TEST ROC / PR
+# CELL 36 - V15 TEST ROC / PR
 # ================================================================
+
+print("\n")
+print("=" * 70)
+print("V15 TEST ROC / PR")
+print("=" * 70)
+
 
 test_roc_auc = roc_auc_score(
 
@@ -2291,12 +2143,6 @@ test_pr_auc = average_precision_score(
 )
 
 
-print("\n")
-print("=" * 70)
-print("V13 TEST ROC / PR")
-print("=" * 70)
-
-
 print(
     "Test ROC-AUC:",
     f"{test_roc_auc:.4f}"
@@ -2309,7 +2155,7 @@ print(
 )
 
 # ================================================================
-# CELL 36 - FINAL V13 TEST RESULTS
+# CELL 37 - FINAL V15 TEST RESULTS
 # ================================================================
 
 final_result = evaluate_threshold(
@@ -2325,7 +2171,7 @@ final_result = evaluate_threshold(
 
 print("\n")
 print("=" * 70)
-print("FINAL V13 TEST RESULTS")
+print("FINAL V15 TEST RESULTS")
 print("=" * 70)
 
 
@@ -2383,7 +2229,7 @@ print(
 )
 
 # ================================================================
-# CELL 37 - V13 CONFUSION MATRIX
+# CELL 38 - V15 CONFUSION MATRIX
 # ================================================================
 
 cm = confusion_matrix(
@@ -2391,9 +2237,7 @@ cm = confusion_matrix(
     y_test,
 
     (
-
         p_test >= FINAL_THRESHOLD
-
     ).astype(int),
 
     labels=[0, 1]
@@ -2406,43 +2250,28 @@ tn, fp, fn, tp = cm.ravel()
 
 print("\n")
 print("=" * 70)
-print("V13 CONFUSION MATRIX")
+print("V15 CONFUSION MATRIX")
 print("=" * 70)
 
 
 print(cm)
 
 
-print(
-    "\nTrue Negative :",
-    tn
-)
+print("\nTrue Negative :", tn)
 
+print("False Positive:", fp)
 
-print(
-    "False Positive:",
-    fp
-)
+print("False Negative:", fn)
 
-
-print(
-    "False Negative:",
-    fn
-)
-
-
-print(
-    "True Positive :",
-    tp
-)
+print("True Positive :", tp)
 
 # ================================================================
-# CELL 38 - V13 CLASSIFICATION REPORT
+# CELL 39 - V15 CLASSIFICATION REPORT
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V13 CLASSIFICATION REPORT")
+print("V15 CLASSIFICATION REPORT")
 print("=" * 70)
 
 
@@ -2479,31 +2308,31 @@ report = classification_report(
 print(report)
 
 # ================================================================
-# CELL 39 - V13 TEST THRESHOLD COMPARISON
+# CELL 40 - V15 TEST THRESHOLD COMPARISON
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V13 TEST THRESHOLD COMPARISON")
+print("V15 TEST THRESHOLD COMPARISON")
 print("=" * 70)
 
 
 comparison_thresholds = {
 
-    "v13_selected":
+    "v15_selected":
         FINAL_THRESHOLD,
 
-    "v13_best_f1":
+    "v15_best_f1":
         float(
             best_f1_row["threshold"]
         ),
 
-    "v13_best_balanced":
+    "v15_best_balanced":
         float(
             best_balanced_row["threshold"]
         ),
 
-    "v13_best_youden":
+    "v15_best_youden":
         float(
             best_youden_row["threshold"]
         ),
@@ -2574,7 +2403,6 @@ comparison_results = {}
 for name, threshold in comparison_thresholds.items():
 
     if threshold is None:
-
         continue
 
 
@@ -2592,47 +2420,39 @@ for name, threshold in comparison_thresholds.items():
     comparison_results[name] = result
 
 
-    print("\n")
-    print("-" * 50)
+    print("\n" + "-" * 50)
 
     print(name)
-
 
     print(
         "Threshold:",
         f"{threshold:.3f}"
     )
 
-
     print(
         "Accuracy:",
         f"{result['accuracy']:.4f}"
     )
-
 
     print(
         "Precision:",
         f"{result['precision']:.4f}"
     )
 
-
     print(
         "Sensitivity:",
         f"{result['sensitivity']:.4f}"
     )
-
 
     print(
         "Specificity:",
         f"{result['specificity']:.4f}"
     )
 
-
     print(
         "F1:",
         f"{result['f1']:.4f}"
     )
-
 
     print(
         "Balanced Accuracy:",
@@ -2640,26 +2460,22 @@ for name, threshold in comparison_thresholds.items():
     )
 
 # ================================================================
-# CELL 40 - V13 PROBABILITY ANALYSIS
+# CELL 41 - V15 PROBABILITY ANALYSIS
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V13 PROBABILITY ANALYSIS")
+print("V15 PROBABILITY ANALYSIS")
 print("=" * 70)
 
 
 melanoma_probs = p_test[
-
     y_test == 1
-
 ]
 
 
 non_melanoma_probs = p_test[
-
     y_test == 0
-
 ]
 
 
@@ -2773,7 +2589,7 @@ print(
 )
 
 # ================================================================
-# CELL 41 - V13 ROC CURVE
+# CELL 42 - V15 ROC CURVE
 # ================================================================
 
 fpr, tpr, roc_thresholds = roc_curve(
@@ -2786,9 +2602,7 @@ fpr, tpr, roc_thresholds = roc_curve(
 
 
 plt.figure(
-
     figsize=(8, 6)
-
 )
 
 
@@ -2798,7 +2612,7 @@ plt.plot(
 
     tpr,
 
-    label=f"V13 ROC-AUC = {test_roc_auc:.4f}"
+    label=f"V15 ROC-AUC = {test_roc_auc:.4f}"
 
 )
 
@@ -2818,29 +2632,26 @@ plt.xlabel(
     "False Positive Rate"
 )
 
-
 plt.ylabel(
     "True Positive Rate"
 )
 
 
 plt.title(
-    "V13 - ROC Curve"
+    "V15 - ROC Curve"
 )
 
 
 plt.legend()
 
-
 plt.grid(
     alpha=0.3
 )
 
-
 plt.show()
 
 # ================================================================
-# CELL 42 - V13 PRECISION RECALL CURVE
+# CELL 43 - V15 PRECISION RECALL CURVE
 # ================================================================
 
 precision_curve, recall_curve, pr_thresholds = (
@@ -2857,9 +2668,7 @@ precision_curve, recall_curve, pr_thresholds = (
 
 
 plt.figure(
-
     figsize=(8, 6)
-
 )
 
 
@@ -2869,7 +2678,7 @@ plt.plot(
 
     precision_curve,
 
-    label=f"V13 PR-AUC = {test_pr_auc:.4f}"
+    label=f"V15 PR-AUC = {test_pr_auc:.4f}"
 
 )
 
@@ -2878,50 +2687,42 @@ plt.xlabel(
     "Recall / Sensitivity"
 )
 
-
 plt.ylabel(
     "Precision"
 )
 
 
 plt.title(
-    "V13 - Precision Recall Curve"
+    "V15 - Precision Recall Curve"
 )
 
 
 plt.legend()
 
-
 plt.grid(
     alpha=0.3
 )
 
-
 plt.show()
 
 # ================================================================
-# CELL 43 - V13 CONFUSION MATRIX PLOT
+# CELL 44 - V15 CONFUSION MATRIX PLOT
 # ================================================================
 
 plt.figure(
-
     figsize=(6, 5)
-
 )
 
 
 plt.imshow(
-
     cm,
-
     interpolation="nearest"
-
 )
 
 
 plt.title(
 
-    f"V13 Confusion Matrix\n"
+    f"V15 Confusion Matrix\n"
     f"Threshold = {FINAL_THRESHOLD:.3f}"
 
 )
@@ -2935,11 +2736,8 @@ plt.xticks(
     [0, 1],
 
     [
-
         "non_melanoma",
-
         "melanoma"
-
     ],
 
     rotation=45
@@ -2952,11 +2750,8 @@ plt.yticks(
     [0, 1],
 
     [
-
         "non_melanoma",
-
         "melanoma"
-
     ]
 
 )
@@ -2985,7 +2780,6 @@ plt.ylabel(
     "True Label"
 )
 
-
 plt.xlabel(
     "Predicted Label"
 )
@@ -2993,17 +2787,14 @@ plt.xlabel(
 
 plt.tight_layout()
 
-
 plt.show()
 
 # ================================================================
-# CELL 44 - V13 THRESHOLD CURVES
+# CELL 45 - V15 THRESHOLD CURVES
 # ================================================================
 
 plt.figure(
-
     figsize=(9, 6)
-
 )
 
 
@@ -3058,10 +2849,22 @@ plt.axvline(
     linestyle="--",
 
     label=(
-
         f"Selected = "
         f"{FINAL_THRESHOLD:.3f}"
+    )
 
+)
+
+
+plt.axhline(
+
+    MIN_REQUIRED_SENSITIVITY,
+
+    linestyle=":",
+
+    label=(
+        f"Minimum Sensitivity = "
+        f"{MIN_REQUIRED_SENSITIVITY:.2f}"
     )
 
 )
@@ -3071,32 +2874,32 @@ plt.xlabel(
     "Threshold"
 )
 
-
 plt.ylabel(
     "Score"
 )
 
 
 plt.title(
-    "V13 Threshold Analysis"
+    "V15 Threshold Analysis"
 )
 
 
 plt.legend()
 
-
 plt.grid(
     alpha=0.3
 )
 
-
 plt.show()
 
 # ================================================================
-# CELL 45 - SAVE ROC DATA
+# CELL 46 - SAVE ROC DATA
 # ================================================================
 
 roc_data = {
+
+    "experiment":
+        "V15",
 
     "fpr":
         fpr.tolist(),
@@ -3114,11 +2917,8 @@ roc_data = {
 
 
 with open(
-
     ROC_PATH,
-
     "w"
-
 ) as f:
 
     json.dump(
@@ -3136,16 +2936,18 @@ print(
     "ROC data saved:"
 )
 
-
 print(
     ROC_PATH
 )
 
 # ================================================================
-# CELL 46 - SAVE PR DATA
+# CELL 47 - SAVE PR DATA
 # ================================================================
 
 pr_data = {
+
+    "experiment":
+        "V15",
 
     "precision":
         precision_curve.tolist(),
@@ -3163,11 +2965,8 @@ pr_data = {
 
 
 with open(
-
     PR_PATH,
-
     "w"
-
 ) as f:
 
     json.dump(
@@ -3185,16 +2984,18 @@ print(
     "PR data saved:"
 )
 
-
 print(
     PR_PATH
 )
 
 # ================================================================
-# CELL 47 - SAVE CONFUSION MATRIX
+# CELL 48 - SAVE CONFUSION MATRIX
 # ================================================================
 
 cm_data = {
+
+    "experiment":
+        "V15",
 
     "matrix":
         cm.tolist(),
@@ -3226,11 +3027,8 @@ cm_data = {
 
 
 with open(
-
     CM_PATH,
-
     "w"
-
 ) as f:
 
     json.dump(
@@ -3248,21 +3046,17 @@ print(
     "Confusion matrix saved:"
 )
 
-
 print(
     CM_PATH
 )
 
 # ================================================================
-# CELL 48 - SAVE CLASSIFICATION REPORT
+# CELL 49 - SAVE CLASSIFICATION REPORT
 # ================================================================
 
 with open(
-
     REPORT_PATH,
-
     "w"
-
 ) as f:
 
     f.write(report)
@@ -3272,27 +3066,21 @@ print(
     "Classification report saved:"
 )
 
-
 print(
     REPORT_PATH
 )
 
 # ================================================================
-# CELL 49 - SAVE FINAL THRESHOLD
+# CELL 50 - SAVE FINAL THRESHOLD
 # ================================================================
 
 with open(
-
     THRESHOLD_PATH,
-
     "w"
-
 ) as f:
 
     f.write(
-
         str(FINAL_THRESHOLD)
-
     )
 
 
@@ -3300,13 +3088,12 @@ print(
     "Threshold saved:"
 )
 
-
 print(
     THRESHOLD_PATH
 )
 
 # ================================================================
-# CELL 50 - SAVE THRESHOLD SEARCH RESULTS
+# CELL 51 - SAVE THRESHOLD RESULTS
 # ================================================================
 
 threshold_df.to_csv(
@@ -3322,19 +3109,18 @@ print(
     "Threshold results saved:"
 )
 
-
 print(
     THRESHOLD_RESULTS_PATH
 )
 
 # ================================================================
-# CELL 51 - V13 EXPERIMENT SUMMARY
+# CELL 52 - V15 EXPERIMENT SUMMARY
 # ================================================================
 
 experiment_summary = {
 
     "experiment":
-        "V13",
+        "V15",
 
     "model":
         "EfficientNetV2-S",
@@ -3372,6 +3158,16 @@ experiment_summary = {
 
     "model_output":
         "P(melanoma)",
+
+    "augmentation":
+        [
+            "RandomFlip(horizontal)",
+            "RandomRotation(0.08)",
+            "RandomZoom(0.10)",
+            "RandomTranslation(0.05)",
+            "RandomContrast(0.10)",
+            "RandomBrightness(0.04)"
+        ],
 
     "loss":
         "MelanomaWeightedBinaryCrossentropy",
@@ -3412,64 +3208,20 @@ experiment_summary = {
     "validation_pr_auc":
         float(val_pr_auc),
 
-    "validation_best_accuracy_threshold":
-        float(
-            best_accuracy_row[
-                "threshold"
-            ]
-        ),
-
     "validation_best_accuracy":
-        float(
-            best_accuracy_row[
-                "accuracy"
-            ]
-        ),
-
-    "validation_best_f1_threshold":
-        float(
-            best_f1_row[
-                "threshold"
-            ]
-        ),
+        best_accuracy_row.to_dict(),
 
     "validation_best_f1":
-        float(
-            best_f1_row[
-                "f1"
-            ]
-        ),
+        best_f1_row.to_dict(),
 
-    "validation_best_balanced_threshold":
-        float(
-            best_balanced_row[
-                "threshold"
-            ]
-        ),
+    "validation_best_balanced":
+        best_balanced_row.to_dict(),
 
-    "validation_best_balanced_accuracy":
-        float(
-            best_balanced_row[
-                "balanced_accuracy"
-            ]
-        ),
-
-    "validation_best_youden_threshold":
-        float(
-            best_youden_row[
-                "threshold"
-            ]
-        ),
-
-    "validation_best_youden_j":
-        float(
-            best_youden_row[
-                "youden_j"
-            ]
-        ),
+    "validation_best_youden":
+        best_youden_row.to_dict(),
 
     "minimum_required_sensitivity":
-        MIN_REQUIRED_SENSITIVITY,
+        float(MIN_REQUIRED_SENSITIVITY),
 
     "selected_threshold":
         float(FINAL_THRESHOLD),
@@ -3477,38 +3229,8 @@ experiment_summary = {
     "threshold_reason":
         THRESHOLD_REASON,
 
-    "selected_validation_metrics":
-        {
-
-            key: float(
-                best_constrained_f1_row[key]
-            )
-
-            for key in [
-
-                "accuracy",
-
-                "precision",
-
-                "sensitivity",
-
-                "specificity",
-
-                "f1",
-
-                "balanced_accuracy",
-
-                "tn",
-
-                "fp",
-
-                "fn",
-
-                "tp"
-
-            ]
-
-        },
+    "selected_validation_result":
+        selected_validation_result,
 
     "test_roc_auc":
         float(test_roc_auc),
@@ -3524,6 +3246,18 @@ experiment_summary = {
 
     "confusion_matrix":
         cm.tolist(),
+
+    "true_negative":
+        int(tn),
+
+    "false_positive":
+        int(fp),
+
+    "false_negative":
+        int(fn),
+
+    "true_positive":
+        int(tp),
 
     "probability_analysis": {
 
@@ -3596,15 +3330,12 @@ experiment_summary = {
 }
 
 # ================================================================
-# CELL 52 - SAVE EXPERIMENT SUMMARY
+# CELL 53 - SAVE EXPERIMENT SUMMARY
 # ================================================================
 
 with open(
-
     RESULTS_PATH,
-
     "w"
-
 ) as f:
 
     json.dump(
@@ -3622,233 +3353,306 @@ print(
     "Experiment summary saved:"
 )
 
-
 print(
     RESULTS_PATH
 )
 
 # ================================================================
-# CELL 53 - SAVE FINAL V13 MODEL
+# CELL 54 - SAVE FINAL V15 MODEL
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("SAVING FINAL V13 MODEL")
+print("SAVING FINAL V15 MODEL")
 print("=" * 70)
 
 
 best_model.save(
-
     FINAL_MODEL_PATH
-
 )
 
 
 print(
-    "V13 MODEL SAVED:"
+    "V15 MODEL SAVED:"
 )
-
 
 print(
     FINAL_MODEL_PATH
 )
 
 # ================================================================
-# CELL 54 - V11 VS V12 VS V13
+# ================================================================
+# CELL 55 - V14 VS V15
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V11 VS V12 VS V13")
+print("V14 VS V15")
 print("=" * 70)
 
+
+# ------------------------------------------------
+# V14 results from your actual experiment
+# ------------------------------------------------
+v14_metrics = {
+    "ROC-AUC": 0.8721,
+    "PR-AUC": 0.5213,
+    "Accuracy": 0.8044,
+    "Precision": 0.3385,
+    "Sensitivity": 0.7857,
+    "Specificity": 0.8067,
+    "F1": 0.4731,
+    "Balanced Accuracy": 0.7962
+}
+
+
+# ------------------------------------------------
+# V15 results
+# ------------------------------------------------
+v15_metrics = {
+    "ROC-AUC": float(test_roc_auc),
+    "PR-AUC": float(test_pr_auc),
+    "Accuracy": float(final_result["accuracy"]),
+    "Precision": float(final_result["precision"]),
+    "Sensitivity": float(final_result["sensitivity"]),
+    "Specificity": float(final_result["specificity"]),
+    "F1": float(final_result["f1"]),
+    "Balanced Accuracy": float(final_result["balanced_accuracy"])
+}
 
 comparison_df = pd.DataFrame({
-
-    "V11": {
-
-        "ROC-AUC":
-            0.8707,
-
-        "PR-AUC":
-            0.4921,
-
-        "Accuracy":
-            0.7415,
-
-        "Precision":
-            0.2793,
-
-        "Sensitivity":
-            0.8304,
-
-        "Specificity":
-            0.7303,
-
-        "F1":
-            0.4180,
-
-        "Balanced Accuracy":
-            0.7803
-
-    },
-
-    "V12": {
-
-        "ROC-AUC":
-            0.8714,
-
-        "PR-AUC":
-            0.4973,
-
-        "Accuracy":
-            0.8253,
-
-        "Precision":
-            0.3612,
-
-        "Sensitivity":
-            0.7321,
-
-        "Specificity":
-            0.8371,
-
-        "F1":
-            0.4838,
-
-        "Balanced Accuracy":
-            0.7846
-
-    },
-
-    "V13": {
-
-        "ROC-AUC":
-            float(test_roc_auc),
-
-        "PR-AUC":
-            float(test_pr_auc),
-
-        "Accuracy":
-            float(final_result["accuracy"]),
-
-        "Precision":
-            float(final_result["precision"]),
-
-        "Sensitivity":
-            float(final_result["sensitivity"]),
-
-        "Specificity":
-            float(final_result["specificity"]),
-
-        "F1":
-            float(final_result["f1"]),
-
-        "Balanced Accuracy":
-            float(
-                final_result[
-                    "balanced_accuracy"
-                ]
-            )
-
-    }
-
+    "V14": v14_metrics,
+    "V15": v15_metrics
 })
 
-
-comparison_df["V13 vs V12"] = (
-
-    comparison_df["V13"]
-
-    -
-
-    comparison_df["V12"]
-
+comparison_df["V15 - V14"] = (
+    comparison_df["V15"] - comparison_df["V14"]
 )
-
 
 print(
-    comparison_df.round(4)
+    comparison_df.to_string(
+        float_format=lambda x: f"{x:.4f}"
+    )
 )
 
-# ================================================================
-# CELL 55 - SAVE V11 V12 V13 COMPARISON
-# ================================================================
-
-comparison_path = os.path.join(MODEL_DIR,"v11_v12_v13_comparison.csv")
-comparison_df.to_csv(comparison_path)
-print("Comparison saved:")
-print(comparison_path)
-
-# ================================================================
-# CELL 56 - FINAL V13 SUMMARY
+# CELL 56 - FINAL V15 SUMMARY
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V13 EXPERIMENT COMPLETE")
+print("V15 EXPERIMENT COMPLETE")
 print("=" * 70)
+
+
 print("\nDATASET:")
-print(DATASET_ROOT)
+
+print(
+    DATASET_ROOT
+)
+
+
 print("\nLABEL MAPPING:")
-print("0 = non_melanoma")
-print("1 = melanoma")
+
+print(
+    "0 = non_melanoma"
+)
+
+print(
+    "1 = melanoma"
+)
+
+
 print("\nMODEL OUTPUT:")
-print("P(melanoma)")
-print("\nV13 MELANOMA WEIGHT:")
-print(MELANOMA_WEIGHT)
+
+print(
+    "P(melanoma)"
+)
+
+
+print("\nV15 MELANOMA WEIGHT:")
+
+print(
+    MELANOMA_WEIGHT
+)
+
+
 print("\nFINAL THRESHOLD:")
-print(f"{FINAL_THRESHOLD:.4f}")
+
+print(
+    f"{FINAL_THRESHOLD:.4f}"
+)
+
+
 print("\nTHRESHOLD REASON:")
-print(THRESHOLD_REASON)
+
+print(
+    THRESHOLD_REASON
+)
+
+
 print("\nVALIDATION ROC-AUC:")
-print(f"{val_roc_auc:.4f}")
+
+print(
+    f"{val_roc_auc:.4f}"
+)
+
+
 print("\nVALIDATION PR-AUC:")
-print(f"{val_pr_auc:.4f}")
+
+print(
+    f"{val_pr_auc:.4f}"
+)
+
+
 print("\nTEST ROC-AUC:")
-print(f"{test_roc_auc:.4f}")
+
+print(
+    f"{test_roc_auc:.4f}"
+)
+
+
 print("\nTEST PR-AUC:")
-print(f"{test_pr_auc:.4f}")
+
+print(
+    f"{test_pr_auc:.4f}"
+)
+
+
 print("\nTEST ACCURACY:")
-print(f"{final_result['accuracy']:.4f}")
+
+print(
+    f"{final_result['accuracy']:.4f}"
+)
+
+
 print("\nTEST PRECISION:")
-print(f"{final_result['precision']:.4f}")
+
+print(
+    f"{final_result['precision']:.4f}"
+)
+
+
 print("\nTEST SENSITIVITY:")
-print(f"{final_result['sensitivity']:.4f}")
+
+print(
+    f"{final_result['sensitivity']:.4f}"
+)
+
+
 print("\nTEST SPECIFICITY:")
-print(f"{final_result['specificity']:.4f}")
+
+print(
+    f"{final_result['specificity']:.4f}"
+)
+
+
 print("\nTEST F1:")
-print(f"{final_result['f1']:.4f}")
+
+print(
+    f"{final_result['f1']:.4f}"
+)
+
+
 print("\nTEST BALANCED ACCURACY:")
-print(f"{final_result['balanced_accuracy']:.4f}")
+
+print(
+    f"{final_result['balanced_accuracy']:.4f}"
+)
+
+
 print("\nCONFUSION MATRIX:")
-print(cm)
+
+print(
+    cm
+)
+
+
 print("\nTRUE NEGATIVE:")
-print(tn)
+
+print(
+    tn
+)
+
+
 print("\nFALSE POSITIVE:")
-print(fp)
+
+print(
+    fp
+)
+
+
 print("\nFALSE NEGATIVE:")
-print(fn)
+
+print(
+    fn
+)
+
+
 print("\nTRUE POSITIVE:")
-print(tp)
+
+print(
+    tp
+)
+
+
 print("\nFINAL MODEL:")
-print(FINAL_MODEL_PATH)
+
+print(
+    FINAL_MODEL_PATH
+)
+
+
 print("\nTHRESHOLD:")
-print(THRESHOLD_PATH)
+
+print(
+    THRESHOLD_PATH
+)
+
+
 print("\nSUMMARY:")
-print(RESULTS_PATH)
+
+print(
+    RESULTS_PATH
+)
+
+
 print("\nROC DATA:")
-print(ROC_PATH)
+
+print(
+    ROC_PATH
+)
+
+
 print("\nPR DATA:")
-print(PR_PATH)
+
+print(
+    PR_PATH
+)
+
+
 print("\nCONFUSION MATRIX DATA:")
-print(CM_PATH)
+
+print(
+    CM_PATH
+)
+
+
 print("\nCLASSIFICATION REPORT:")
-print(REPORT_PATH)
+
+print(
+    REPORT_PATH
+)
+
+
 print("\nTHRESHOLD RESULTS:")
-print(THRESHOLD_RESULTS_PATH)
+
+print(
+    THRESHOLD_RESULTS_PATH
+)
+
+
 print("\n")
 print("=" * 70)
-print("V13 FINISHED SUCCESSFULLY")
+print("V15 FINISHED SUCCESSFULLY")
 print("=" * 70)
 
