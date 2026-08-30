@@ -1,5 +1,5 @@
 # ================================================================
-# V21 MELANOMA CLASSIFICATION
+# V22 MELANOMA CLASSIFICATION
 # ================================================================
 
 import os
@@ -35,7 +35,7 @@ from sklearn.metrics import (
 warnings.filterwarnings("ignore")
 
 print("=" * 70)
-print("V21 MELANOMA CLASSIFICATION")
+print("V22 MELANOMA CLASSIFICATION")
 print("=" * 70)
 
 print("TensorFlow:", tf.__version__)
@@ -123,11 +123,11 @@ else:
     )
 
 # ================================================================
-# CELL 5 - V21 DATASET CONFIGURATION
+# CELL 5 - V22 DATASET CONFIGURATION
 # ================================================================
 
 print("\n" + "=" * 70)
-print("V21 DATASET CONFIGURATION")
+print("V22 DATASET CONFIGURATION")
 print("=" * 70)
 
 
@@ -197,15 +197,15 @@ MIN_LR = 1e-7
 
 
 # ------------------------------------------------
-# V21 MELANOMA WEIGHT
+# V22 MELANOMA WEIGHT
 # ------------------------------------------------
 
 NON_MELANOMA_WEIGHT = 1.0
 
 MELANOMA_WEIGHT = 1.50
 
-# V21 focal-loss focusing parameter
-FOCAL_GAMMA = 1.0
+# V22 focal-loss focusing parameter
+FOCAL_GAMMA = 1.5
 
 
 # ------------------------------------------------
@@ -216,7 +216,7 @@ FINE_TUNE_FRACTION = 0.40
 
 
 # ------------------------------------------------
-# V21 THRESHOLD POLICY
+# V22 THRESHOLD POLICY
 # ------------------------------------------------
 
 MIN_REQUIRED_SENSITIVITY = 0.70
@@ -456,7 +456,7 @@ os.makedirs(
 )
 
 
-MODEL_NAME = "efficientnet_v21"
+MODEL_NAME = "efficientnet_v22"
 
 
 BEST_MODEL_PATH = os.path.join(
@@ -514,7 +514,7 @@ THRESHOLD_RESULTS_PATH = os.path.join(
 
 
 print("=" * 70)
-print("V21 OUTPUT PATHS")
+print("V22 OUTPUT PATHS")
 print("=" * 70)
 
 print("Checkpoint:")
@@ -648,7 +648,7 @@ test_counts = count_images(
 
 
 print("\n" + "=" * 70)
-print("V21 DATASET COUNTS")
+print("V22 DATASET COUNTS")
 print("=" * 70)
 
 
@@ -784,11 +784,11 @@ print(
 )
 
 # ================================================================
-# CELL 14 - V21 DATA AUGMENTATION
+# CELL 14 - V22 DATA AUGMENTATION
 # ================================================================
 
 print("\n" + "=" * 70)
-print("CREATING V21 DATA AUGMENTATION")
+print("CREATING V22 DATA AUGMENTATION")
 print("=" * 70)
 
 
@@ -819,7 +819,7 @@ data_augmentation = tf.keras.Sequential(
         ),
 
         # ------------------------------------------------
-        # V21 controlled augmentation (unchanged from V20)
+        # V22 controlled augmentation (unchanged from V20)
         # ------------------------------------------------
 
         tf.keras.layers.RandomBrightness(
@@ -828,12 +828,12 @@ data_augmentation = tf.keras.Sequential(
 
     ],
 
-    name="v21_augmentation"
+    name="v22_augmentation"
 )
 
 
 print(
-    "V21 augmentation created."
+    "V22 augmentation created."
 )
 
 print(
@@ -842,7 +842,7 @@ print(
 )
 
 # ================================================================
-# CELL 15 - V21 WEIGHTED FOCAL LOSS
+# CELL 15 - V22 WEIGHTED FOCAL LOSS
 # ================================================================
 
 @tf.keras.utils.register_keras_serializable()
@@ -914,7 +914,7 @@ class MelanomaWeightedFocalLoss(
 
         # Focal modulation down-weights easy, confidently
         # classified examples and concentrates the loss on
-        # difficult examples. gamma=1 is the controlled V21 focal-loss
+        # difficult examples. gamma=1 is the controlled V22 focal-loss
         # experiment following V18 gamma=2.
         focal_factor = tf.pow(
             1.0 - p_t,
@@ -987,11 +987,11 @@ print(
 )
 
 # ================================================================
-# CELL 17 - CREATE V21 MODEL
+# CELL 17 - CREATE V22 MODEL
 # ================================================================
 
 print("\n" + "=" * 70)
-print("CREATING V21 MODEL")
+print("CREATING V22 MODEL")
 print("=" * 70)
 
 
@@ -1082,7 +1082,7 @@ model = tf.keras.Model(
 
     outputs=outputs,
 
-    name="efficientnet_v21"
+    name="efficientnet_v22"
 
 )
 
@@ -1120,7 +1120,7 @@ model.summary()
 # ================================================================
 
 print("\n" + "=" * 70)
-print("COMPILING V21 STAGE 1")
+print("COMPILING V22 STAGE 1")
 print("=" * 70)
 
 
@@ -1217,7 +1217,7 @@ print(
 
 print("\n")
 print("=" * 70)
-print("V21 STAGE 1 - FROZEN EFFICIENTNETV2-S")
+print("V22 STAGE 1 - FROZEN EFFICIENTNETV2-S")
 print("=" * 70)
 
 
@@ -1263,7 +1263,7 @@ history_stage1 = model.fit(
 # ================================================================
 
 print("\n" + "=" * 70)
-print("LOADING BEST V21 STAGE 1 MODEL")
+print("LOADING BEST V22 STAGE 1 MODEL")
 print("=" * 70)
 
 
@@ -1298,7 +1298,7 @@ print(
 # ================================================================
 
 print("\n" + "=" * 70)
-print("PREPARING V21 FINE-TUNING")
+print("PREPARING V22 FINE-TUNING")
 print("=" * 70)
 
 
@@ -1377,7 +1377,7 @@ print(
 # ================================================================
 
 print("\n" + "=" * 70)
-print("COMPILING V21 STAGE 2")
+print("COMPILING V22 STAGE 2")
 print("=" * 70)
 
 
@@ -1472,7 +1472,7 @@ print(
 
 print("\n")
 print("=" * 70)
-print("V21 STAGE 2 - FINE-TUNING EFFICIENTNETV2-S")
+print("V22 STAGE 2 - FINE-TUNING EFFICIENTNETV2-S")
 print("=" * 70)
 
 
@@ -1514,12 +1514,12 @@ history_stage2 = model.fit(
 )
 
 # ================================================================
-# CELL 27 - LOAD ABSOLUTE BEST V21 MODEL
+# CELL 27 - LOAD ABSOLUTE BEST V22 MODEL
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("LOADING ABSOLUTE BEST V21 MODEL")
+print("LOADING ABSOLUTE BEST V22 MODEL")
 print("=" * 70)
 
 
@@ -1532,7 +1532,7 @@ best_model = tf.keras.models.load_model(
 
 
 print(
-    "Absolute best V21 model loaded."
+    "Absolute best V22 model loaded."
 )
 
 # ================================================================
@@ -1595,12 +1595,12 @@ def get_predictions(
     return labels, probabilities
 
 # ================================================================
-# CELL 29 - V21 VALIDATION PREDICTIONS
+# CELL 29 - V22 VALIDATION PREDICTIONS
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V21 VALIDATION PREDICTIONS")
+print("V22 VALIDATION PREDICTIONS")
 print("=" * 70)
 
 
@@ -1629,11 +1629,11 @@ print(
 )
 
 # ================================================================
-# CELL 30 - V21 VALIDATION PERFORMANCE
+# CELL 30 - V22 VALIDATION PERFORMANCE
 # ================================================================
 
 print("\n" + "=" * 70)
-print("V21 VALIDATION PERFORMANCE")
+print("V22 VALIDATION PERFORMANCE")
 print("=" * 70)
 
 
@@ -1800,12 +1800,12 @@ def evaluate_threshold(
     }
 
 # ================================================================
-# CELL 32 - V21 VALIDATION THRESHOLD SEARCH
+# CELL 32 - V22 VALIDATION THRESHOLD SEARCH
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V21 VALIDATION THRESHOLD SEARCH")
+print("V22 VALIDATION THRESHOLD SEARCH")
 print("=" * 70)
 
 
@@ -1901,12 +1901,12 @@ print(
 )
 
 # ================================================================
-# CELL 33 - V21 SENSITIVITY-CONSTRAINED SEARCH
+# CELL 33 - V22 SENSITIVITY-CONSTRAINED SEARCH
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V21 SENSITIVITY-CONSTRAINED THRESHOLD SEARCH")
+print("V22 SENSITIVITY-CONSTRAINED THRESHOLD SEARCH")
 print("=" * 70)
 
 
@@ -1982,12 +1982,12 @@ for target in sensitivity_targets:
     )
 
 # ================================================================
-# CELL 34 - SELECT FINAL V21 THRESHOLD
+# CELL 34 - SELECT FINAL V22 THRESHOLD
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("SELECTING V21 FINAL THRESHOLD")
+print("SELECTING V22 FINAL THRESHOLD")
 print("=" * 70)
 
 
@@ -2094,12 +2094,12 @@ for key in [
     )
 
 # ================================================================
-# CELL 35 - V21 TEST PREDICTIONS
+# CELL 35 - V22 TEST PREDICTIONS
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V21 TEST PREDICTIONS")
+print("V22 TEST PREDICTIONS")
 print("=" * 70)
 
 
@@ -2130,12 +2130,12 @@ print(
 )
 
 # ================================================================
-# CELL 36 - V21 TEST ROC / PR
+# CELL 36 - V22 TEST ROC / PR
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V21 TEST ROC / PR")
+print("V22 TEST ROC / PR")
 print("=" * 70)
 
 
@@ -2169,7 +2169,7 @@ print(
 )
 
 # ================================================================
-# CELL 37 - FINAL V21 TEST RESULTS
+# CELL 37 - FINAL V22 TEST RESULTS
 # ================================================================
 
 final_result = evaluate_threshold(
@@ -2185,7 +2185,7 @@ final_result = evaluate_threshold(
 
 print("\n")
 print("=" * 70)
-print("FINAL V21 TEST RESULTS")
+print("FINAL V22 TEST RESULTS")
 print("=" * 70)
 
 
@@ -2243,7 +2243,7 @@ print(
 )
 
 # ================================================================
-# CELL 38 - V21 CONFUSION MATRIX
+# CELL 38 - V22 CONFUSION MATRIX
 # ================================================================
 
 cm = confusion_matrix(
@@ -2264,7 +2264,7 @@ tn, fp, fn, tp = cm.ravel()
 
 print("\n")
 print("=" * 70)
-print("V21 CONFUSION MATRIX")
+print("V22 CONFUSION MATRIX")
 print("=" * 70)
 
 
@@ -2280,12 +2280,12 @@ print("False Negative:", fn)
 print("True Positive :", tp)
 
 # ================================================================
-# CELL 39 - V21 CLASSIFICATION REPORT
+# CELL 39 - V22 CLASSIFICATION REPORT
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V21 CLASSIFICATION REPORT")
+print("V22 CLASSIFICATION REPORT")
 print("=" * 70)
 
 
@@ -2322,31 +2322,31 @@ report = classification_report(
 print(report)
 
 # ================================================================
-# CELL 40 - V21 TEST THRESHOLD COMPARISON
+# CELL 40 - V22 TEST THRESHOLD COMPARISON
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V21 TEST THRESHOLD COMPARISON")
+print("V22 TEST THRESHOLD COMPARISON")
 print("=" * 70)
 
 
 comparison_thresholds = {
 
-    "v21_selected":
+    "v22_selected":
         FINAL_THRESHOLD,
 
-    "v21_best_f1":
+    "v22_best_f1":
         float(
             best_f1_row["threshold"]
         ),
 
-    "v21_best_balanced":
+    "v22_best_balanced":
         float(
             best_balanced_row["threshold"]
         ),
 
-    "v21_best_youden":
+    "v22_best_youden":
         float(
             best_youden_row["threshold"]
         ),
@@ -2474,12 +2474,12 @@ for name, threshold in comparison_thresholds.items():
     )
 
 # ================================================================
-# CELL 41 - V21 PROBABILITY ANALYSIS
+# CELL 41 - V22 PROBABILITY ANALYSIS
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V21 PROBABILITY ANALYSIS")
+print("V22 PROBABILITY ANALYSIS")
 print("=" * 70)
 
 
@@ -2603,7 +2603,7 @@ print(
 )
 
 # ================================================================
-# CELL 42 - V21 ROC CURVE
+# CELL 42 - V22 ROC CURVE
 # ================================================================
 
 fpr, tpr, roc_thresholds = roc_curve(
@@ -2626,7 +2626,7 @@ plt.plot(
 
     tpr,
 
-    label=f"V21 ROC-AUC = {test_roc_auc:.4f}"
+    label=f"V22 ROC-AUC = {test_roc_auc:.4f}"
 
 )
 
@@ -2652,7 +2652,7 @@ plt.ylabel(
 
 
 plt.title(
-    "V21 - ROC Curve"
+    "V22 - ROC Curve"
 )
 
 
@@ -2665,7 +2665,7 @@ plt.grid(
 plt.show()
 
 # ================================================================
-# CELL 43 - V21 PRECISION RECALL CURVE
+# CELL 43 - V22 PRECISION RECALL CURVE
 # ================================================================
 
 precision_curve, recall_curve, pr_thresholds = (
@@ -2692,7 +2692,7 @@ plt.plot(
 
     precision_curve,
 
-    label=f"V21 PR-AUC = {test_pr_auc:.4f}"
+    label=f"V22 PR-AUC = {test_pr_auc:.4f}"
 
 )
 
@@ -2707,7 +2707,7 @@ plt.ylabel(
 
 
 plt.title(
-    "V21 - Precision Recall Curve"
+    "V22 - Precision Recall Curve"
 )
 
 
@@ -2720,7 +2720,7 @@ plt.grid(
 plt.show()
 
 # ================================================================
-# CELL 44 - V21 CONFUSION MATRIX PLOT
+# CELL 44 - V22 CONFUSION MATRIX PLOT
 # ================================================================
 
 plt.figure(
@@ -2736,7 +2736,7 @@ plt.imshow(
 
 plt.title(
 
-    f"V21 Confusion Matrix\n"
+    f"V22 Confusion Matrix\n"
     f"Threshold = {FINAL_THRESHOLD:.3f}"
 
 )
@@ -2804,7 +2804,7 @@ plt.tight_layout()
 plt.show()
 
 # ================================================================
-# CELL 45 - V21 THRESHOLD CURVES
+# CELL 45 - V22 THRESHOLD CURVES
 # ================================================================
 
 plt.figure(
@@ -2894,7 +2894,7 @@ plt.ylabel(
 
 
 plt.title(
-    "V21 Threshold Analysis"
+    "V22 Threshold Analysis"
 )
 
 
@@ -2913,7 +2913,7 @@ plt.show()
 roc_data = {
 
     "experiment":
-        "V21",
+        "V22",
 
     "fpr":
         fpr.tolist(),
@@ -2961,7 +2961,7 @@ print(
 pr_data = {
 
     "experiment":
-        "V21",
+        "V22",
 
     "precision":
         precision_curve.tolist(),
@@ -3009,7 +3009,7 @@ print(
 cm_data = {
 
     "experiment":
-        "V21",
+        "V22",
 
     "matrix":
         cm.tolist(),
@@ -3128,13 +3128,13 @@ print(
 )
 
 # ================================================================
-# CELL 52 - V21 EXPERIMENT SUMMARY
+# CELL 52 - V22 EXPERIMENT SUMMARY
 # ================================================================
 
 experiment_summary = {
 
     "experiment":
-        "V21",
+        "V22",
 
     "model":
         "EfficientNetV2-S",
@@ -3374,12 +3374,12 @@ print(
 )
 
 # ================================================================
-# CELL 54 - SAVE FINAL V21 MODEL
+# CELL 54 - SAVE FINAL V22 MODEL
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("SAVING FINAL V21 MODEL")
+print("SAVING FINAL V22 MODEL")
 print("=" * 70)
 
 
@@ -3389,7 +3389,7 @@ best_model.save(
 
 
 print(
-    "V21 MODEL SAVED:"
+    "V22 MODEL SAVED:"
 )
 
 print(
@@ -3398,12 +3398,12 @@ print(
 
 # ================================================================
 # ================================================================
-# CELL 55 - V14 VS V16 VS V17 VS V18 VS V21
+# CELL 55 - V14 VS V16 VS V17 VS V18 VS V22
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V14 VS V16 VS V17 VS V18 VS V21")
+print("V14 VS V16 VS V17 VS V18 VS V22")
 print("=" * 70)
 
 
@@ -3481,9 +3481,9 @@ v20_metrics = {
 }
 
 # ------------------------------------------------
-# V21 results from the current experiment
+# V22 results from the current experiment
 # ------------------------------------------------
-v21_metrics = {
+v22_metrics = {
     "ROC-AUC": float(test_roc_auc),
     "PR-AUC": float(test_pr_auc),
     "Accuracy": float(final_result["accuracy"]),
@@ -3516,27 +3516,27 @@ comparison_df = pd.DataFrame({
     "V18": v18_metrics,
     "V19": v19_metrics,
     "V20": v20_metrics,
-    "V21": v21_metrics
+    "V22": v22_metrics
 })
 
-comparison_df["V21 - V20"] = comparison_df["V21"] - comparison_df["V20"]
-comparison_df["V21 - V19"] = comparison_df["V21"] - comparison_df["V19"]
-comparison_df["V21 - V18"] = comparison_df["V21"] - comparison_df["V18"]
-comparison_df["V21 - V17"] = comparison_df["V21"] - comparison_df["V17"]
-comparison_df["V21 - V16"] = comparison_df["V21"] - comparison_df["V16"]
-comparison_df["V21 - V14"] = comparison_df["V21"] - comparison_df["V14"]
+comparison_df["V22 - V20"] = comparison_df["V22"] - comparison_df["V20"]
+comparison_df["V22 - V19"] = comparison_df["V22"] - comparison_df["V19"]
+comparison_df["V22 - V18"] = comparison_df["V22"] - comparison_df["V18"]
+comparison_df["V22 - V17"] = comparison_df["V22"] - comparison_df["V17"]
+comparison_df["V22 - V16"] = comparison_df["V22"] - comparison_df["V16"]
+comparison_df["V22 - V14"] = comparison_df["V22"] - comparison_df["V14"]
 print(
     comparison_df.to_string(
         float_format=lambda x: f"{x:.4f}"
     )
 )
 
-# CELL 56 - FINAL V21 SUMMARY
+# CELL 56 - FINAL V22 SUMMARY
 # ================================================================
 
 print("\n")
 print("=" * 70)
-print("V21 EXPERIMENT COMPLETE")
+print("V22 EXPERIMENT COMPLETE")
 print("=" * 70)
 
 
@@ -3565,7 +3565,7 @@ print(
 )
 
 
-print("\nV21 MELANOMA WEIGHT:")
+print("\nV22 MELANOMA WEIGHT:")
 
 print(
     MELANOMA_WEIGHT
@@ -3749,6 +3749,6 @@ print(
 
 print("\n")
 print("=" * 70)
-print("V21 FINISHED SUCCESSFULLY")
+print("V22 FINISHED SUCCESSFULLY")
 print("=" * 70)
 
