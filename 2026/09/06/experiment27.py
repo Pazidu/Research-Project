@@ -3,7 +3,7 @@
 # V27 DATASET PREPARATION
 #
 # Original dataset:
-#   /content/newdata
+#   /content/drive/MyDrive/Colab Notebooks/newdata_backup
 #
 # New dataset:
 #   /content/newdata_offline_aug
@@ -27,7 +27,7 @@ from PIL import Image, ImageEnhance, ImageOps, ImageFilter
 # CONFIGURATION
 # ============================================================
 
-SOURCE_DIR = Path("/content/newdata")
+SOURCE_DIR = Path("/content/drive/MyDrive/Colab Notebooks/newdata_backup")
 OUTPUT_DIR = Path("/content/newdata_offline_aug")
 
 # Create 3x total melanoma training images
@@ -102,7 +102,7 @@ def get_images(folder):
 def count_images(split, class_name):
     """
     Count images in:
-    /content/newdata/<split>/<class_name>
+    /content/drive/MyDrive/Colab Notebooks/newdata_backup/<split>/<class_name>
     """
     folder = SOURCE_DIR / split / class_name
     return len(get_images(folder))
