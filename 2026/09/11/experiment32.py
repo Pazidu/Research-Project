@@ -1037,14 +1037,45 @@ print("=" * 80)
 print("LOADING BEST V32 MODEL")
 print("=" * 80)
 
+# Recreate focal loss
+loss_function = binary_focal_loss(
+    gamma=FOCAL_GAMMA,
+    positive_weight=MELANOMA_WEIGHT,
+    negative_weight=NON_MELANOMA_WEIGHT
+)
+
 model = keras.models.load_model(
     stage2_checkpoint,
     custom_objects={
+        "loss": loss_function,
         "ChannelAttention": ChannelAttention
-    }
+    },
+    compile=False
 )
 
-print("Best V32 model loaded.")
+# Recompile with Stage 2 configuration
+model.compile(
+    optimizer=keras.optimizers.Adam(
+        learning_rate=STAGE2_LR
+    ),
+    loss=loss_function,
+    metrics=[
+        keras.metrics.BinaryAccuracy(
+            name="accuracy"
+        ),
+        keras.metrics.AUC(
+            name="auc"
+        ),
+        keras.metrics.Precision(
+            name="precision"
+        ),
+        keras.metrics.Recall(
+            name="recall"
+        )
+    ]
+)
+
+print("Best V32 model loaded successfully.")
 
 
 # =============================================================================
