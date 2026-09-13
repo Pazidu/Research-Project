@@ -767,14 +767,46 @@ print("=" * 80)
 print("LOADING BEST STAGE 1 MODEL")
 print("=" * 80)
 
+# Recreate the exact V32 focal loss object
+loss_function = binary_focal_loss(
+    gamma=FOCAL_GAMMA,
+    positive_weight=MELANOMA_WEIGHT,
+    negative_weight=NON_MELANOMA_WEIGHT
+)
+
 model = keras.models.load_model(
     stage1_checkpoint,
     custom_objects={
+        "loss": loss_function,
         "ChannelAttention": ChannelAttention
-    }
+    },
+    compile=False
 )
 
-print("Best Stage 1 model loaded.")
+# Recompile using the exact Stage 1 configuration
+model.compile(
+    optimizer=keras.optimizers.Adam(
+        learning_rate=STAGE1_LR
+    ),
+    loss=loss_function,
+    metrics=[
+        keras.metrics.BinaryAccuracy(
+            name="accuracy"
+        ),
+        keras.metrics.AUC(
+            name="auc"
+        ),
+        keras.metrics.Precision(
+            name="precision"
+        ),
+        keras.metrics.Recall(
+            name="recall"
+        )
+    ]
+)
+
+print("Best Stage 1 model loaded successfully.")
+print("Stage 1 model is ready for Stage 2 fine-tuning.")
 
 
 # =============================================================================
